@@ -209,14 +209,14 @@
                             </div>
                             <div class="bg-blue-50 text-blue-600 p-3 rounded-xl"><i class="fa-solid fa-wallet text-lg md:text-xl"></i></div>
                         </div>
-                        <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div role="button" tabindex="0" title="Clique para ver as receitas pagas" onclick="abrirDetalheDashboard('receita-paga')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDetalheDashboard('receita-paga')}" class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-emerald-200 transition focus:outline-none focus:ring-2 focus:ring-emerald-500">
                             <div>
                                 <p class="text-xs md:text-sm font-medium text-slate-500">Receitas Pagas (Mês)</p>
                                 <h3 id="card-receitas" class="text-xl md:text-2xl font-bold text-emerald-600 mt-1">R$ 0,00</h3>
                             </div>
                             <div class="bg-emerald-50 text-emerald-600 p-3 rounded-xl"><i class="fa-solid fa-arrow-trend-up text-lg md:text-xl"></i></div>
                         </div>
-                        <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div role="button" tabindex="0" title="Clique para ver as despesas pagas" onclick="abrirDetalheDashboard('despesa-paga')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDetalheDashboard('despesa-paga')}" class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-rose-200 transition focus:outline-none focus:ring-2 focus:ring-rose-500">
                             <div>
                                 <p class="text-xs md:text-sm font-medium text-slate-500">Despesas Pagas (Mês)</p>
                                 <h3 id="card-despesas" class="text-xl md:text-2xl font-bold text-rose-600 mt-1">R$ 0,00</h3>
@@ -226,11 +226,11 @@
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-                        <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div role="button" tabindex="0" title="Clique para ver as receitas projetadas" onclick="abrirDetalheDashboard('receita-proj')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDetalheDashboard('receita-proj')}" class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-emerald-200 transition focus:outline-none focus:ring-2 focus:ring-emerald-500">
                             <div><p class="text-xs md:text-sm font-medium text-slate-500">Receitas Projetadas (Mês)</p><h3 id="card-receitas-projetadas" class="text-xl md:text-2xl font-bold text-emerald-600 mt-1">R$ 0,00</h3></div>
                             <div class="bg-emerald-50 text-emerald-600 p-3 rounded-xl"><i class="fa-solid fa-chart-line text-lg md:text-xl"></i></div>
                         </div>
-                        <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div role="button" tabindex="0" title="Clique para ver as despesas projetadas" onclick="abrirDetalheDashboard('despesa-proj')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDetalheDashboard('despesa-proj')}" class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-rose-200 transition focus:outline-none focus:ring-2 focus:ring-rose-500">
                             <div><p class="text-xs md:text-sm font-medium text-slate-500">Despesas Projetadas (Mês)</p><h3 id="card-despesas-projetadas" class="text-xl md:text-2xl font-bold text-rose-600 mt-1">R$ 0,00</h3></div>
                             <div class="bg-rose-50 text-rose-600 p-3 rounded-xl"><i class="fa-solid fa-chart-column text-lg md:text-xl"></i></div>
                         </div>
@@ -807,6 +807,50 @@
 
     <!-- BALÃO (tooltip) para textos que não cabem por inteiro na coluna -->
     <div id="tt-balao" class="hidden fixed z-[70] w-max max-w-xs bg-slate-800 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-normal break-words pointer-events-none"></div>
+
+    <!-- MODAL: Detalhamento dos cards do dashboard (receitas/despesas pagas e projetadas) -->
+    <div id="modal-detalhe-dashboard" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4" onclick="if (event.target === this) fecharDetalheDashboard()">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-start gap-3 p-6 pb-3">
+                <div class="min-w-0">
+                    <h3 id="dd-titulo" class="text-base font-bold text-slate-800"></h3>
+                    <p id="dd-subtitulo" class="text-xs text-slate-500 mt-1"></p>
+                </div>
+                <button type="button" onclick="fecharDetalheDashboard()" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="mx-6 mb-3 grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
+                <div class="col-span-2">
+                    <label class="block text-[11px] font-semibold text-slate-500 mb-1" for="dd-busca">Buscar descrição</label>
+                    <input type="search" id="dd-busca" oninput="renderDetalheDashboard()" placeholder="Digite para buscar..." class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 mb-1" for="dd-categoria">Categoria</label>
+                    <select id="dd-categoria" onchange="renderDetalheDashboard()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 mb-1" for="dd-banco">Banco</label>
+                    <select id="dd-banco" onchange="renderDetalheDashboard()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 mb-1" for="dd-responsavel">Responsável</label>
+                    <select id="dd-responsavel" onchange="renderDetalheDashboard()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500"></select>
+                </div>
+                <div id="dd-origem-wrap" class="hidden">
+                    <label class="block text-[11px] font-semibold text-slate-500 mb-1" for="dd-origem">Origem</label>
+                    <select id="dd-origem" onchange="renderDetalheDashboard()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="">Todas</option>
+                        <option value="recorrente">Recorrente</option>
+                        <option value="parcelado">Parcelado</option>
+                    </select>
+                </div>
+                <div class="col-span-2 md:col-span-6 flex justify-end">
+                    <button type="button" onclick="limparFiltrosDetalheDashboard()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg px-3 py-2 text-xs font-semibold cursor-pointer"><i class="fa-solid fa-filter-circle-xmark mr-1"></i>Limpar filtros</button>
+                </div>
+            </div>
+            <div id="dd-resumo" class="mx-6 mb-3 flex justify-between items-center rounded-xl px-4 py-3 text-sm"></div>
+            <div id="dd-corpo" class="px-6 pb-6 overflow-auto"></div>
+        </div>
+    </div>
 
     <!-- MODAL: Novo lançamento a partir de uma categoria já existente -->
     <div id="modal-lanc-categoria" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4" onclick="if (event.target === this) fecharModalLancamentoCategoria()">
@@ -2829,6 +2873,138 @@
             });
         }
 
+
+        // =====================================================================
+        // Detalhamento dos cards do dashboard (respeita mês e responsável filtrados)
+        // =====================================================================
+        let _dd = null; // estado da janela de detalhamento aberta
+
+        function abrirDetalheDashboard(tipoCard) {
+            const mes = document.getElementById('dashboard-mes').value;
+            if (!mes) return;
+            const responsavelDashboard = document.getElementById('dashboard-responsavel').value;
+            const ehReceita = tipoCard.startsWith('receita');
+            const ehProjetado = tipoCard.endsWith('proj');
+            const tipo = ehReceita ? 'receita' : 'despesa';
+            const fmtData = d => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+
+            // Base do mês (todos os responsáveis): os filtros da janela refinam a partir daqui
+            let itens;
+            if (ehProjetado) {
+                itens = (window.listaProjecoesCalculada || [])
+                    .filter(p => p.dataOrdenacao === mes && p.tipo === tipo && !db.projecoesExcluidas?.[p.chaveCustom])
+                    .map(p => ({
+                        data: '',
+                        descricao: p.descricao || '',
+                        categoria: p.categoria || 'Geral',
+                        banco: p.banco || '',
+                        responsavel: p.responsavel || 'Geral',
+                        origem: p.origem === 'parcelado' ? 'parcelado' : 'recorrente',
+                        valor: Number(p.valorProjetado) || 0
+                    }));
+            } else {
+                itens = db.transacoes
+                    .filter(t => t.data && t.data.startsWith(mes) && t.status === 'pago' && t.tipo === tipo)
+                    .map(t => ({
+                        data: t.data,
+                        dataBR: fmtData(t.data),
+                        descricao: t.descricao || '',
+                        categoria: t.categoria || 'Geral',
+                        banco: t.banco || '',
+                        responsavel: t.responsavel || 'Geral',
+                        origem: '',
+                        valor: Number(t.valor) || 0
+                    }));
+            }
+
+            _dd = { tipoCard, mes, ehReceita, ehProjetado, itens };
+
+            const preencher = (id, rotuloTodos, valores, selecionado) => {
+                const lista = [...new Set(valores.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+                if (selecionado && !lista.includes(selecionado)) lista.push(selecionado);
+                const el = document.getElementById(id);
+                el.innerHTML = `<option value="">${rotuloTodos}</option>` +
+                    lista.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+                el.value = selecionado || '';
+            };
+            preencher('dd-categoria', 'Todas', itens.map(i => i.categoria), '');
+            preencher('dd-banco', 'Todos', itens.map(i => i.banco), '');
+            preencher('dd-responsavel', 'Todos', itens.map(i => i.responsavel), responsavelDashboard);
+            document.getElementById('dd-busca').value = '';
+            document.getElementById('dd-origem').value = '';
+            document.getElementById('dd-origem-wrap').classList.toggle('hidden', !ehProjetado);
+
+            const nomeMes = new Date(mes + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            const rotulo = `${ehReceita ? 'Receitas' : 'Despesas'} ${ehProjetado ? 'Projetadas' : 'Pagas'}`;
+            const corTexto = ehReceita ? 'text-emerald-600' : 'text-rose-600';
+            document.getElementById('dd-titulo').innerHTML = `<i class="fa-solid ${ehReceita ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'} mr-2 ${corTexto}"></i>${rotulo}`;
+            document.getElementById('dd-subtitulo').innerText = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+
+            renderDetalheDashboard();
+            const modal = document.getElementById('modal-detalhe-dashboard');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function renderDetalheDashboard() {
+            if (!_dd) return;
+            const { ehReceita, ehProjetado, itens } = _dd;
+            const busca = document.getElementById('dd-busca').value.trim().toLocaleLowerCase('pt-BR');
+            const fCat = document.getElementById('dd-categoria').value;
+            const fBanco = document.getElementById('dd-banco').value;
+            const fResp = document.getElementById('dd-responsavel').value;
+            const fOrigem = ehProjetado ? document.getElementById('dd-origem').value : '';
+
+            const linhas = itens
+                .filter(i => (!busca || i.descricao.toLocaleLowerCase('pt-BR').includes(busca))
+                    && (!fCat || i.categoria === fCat)
+                    && (!fBanco || i.banco === fBanco)
+                    && (!fResp || i.responsavel === fResp)
+                    && (!fOrigem || i.origem === fOrigem))
+                .sort(ehProjetado ? (a, b) => b.valor - a.valor : (a, b) => a.data.localeCompare(b.data));
+
+            const cor = ehReceita ? 'emerald' : 'rose';
+            const corTexto = ehReceita ? 'text-emerald-600' : 'text-rose-600';
+            const total = linhas.reduce((acc, l) => acc + l.valor, 0);
+            const filtrado = linhas.length !== itens.length;
+
+            const resumo = document.getElementById('dd-resumo');
+            resumo.className = `mx-6 mb-3 flex justify-between items-center rounded-xl px-4 py-3 text-sm bg-${cor}-50 border border-${cor}-100`;
+            resumo.innerHTML = `<span class="font-medium text-slate-600">${filtrado ? `${linhas.length} de ${itens.length} itens` : `${linhas.length} ${linhas.length === 1 ? 'item' : 'itens'}`}</span><span class="font-bold ${corTexto}">Total: ${formatarMoeda(total)}</span>`;
+
+            const cabecalho = ehProjetado
+                ? ['Descrição', 'Categoria', 'Banco', 'Responsável', 'Origem', 'Valor']
+                : ['Data', 'Descrição', 'Categoria', 'Banco', 'Responsável', 'Valor'];
+            const celulas = l => ehProjetado
+                ? [l.descricao, l.categoria, l.banco || '—', l.responsavel, l.origem === 'parcelado' ? 'Parcelado' : 'Recorrente']
+                : [l.dataBR, l.descricao, l.categoria, l.banco || '—', l.responsavel];
+
+            document.getElementById('dd-corpo').innerHTML = linhas.length === 0
+                ? `<p class="text-sm text-slate-400 italic text-center py-8">Nenhum lançamento encontrado para este filtro.</p>`
+                : `<table class="w-full text-sm text-left">
+                    <thead class="text-xs uppercase text-slate-500 border-b border-slate-200">
+                        <tr>${cabecalho.map((c, i) => `<th class="py-2 pr-3 font-semibold ${i === cabecalho.length - 1 ? 'text-right pr-0' : ''}">${c}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${linhas.map(l => `<tr class="border-b border-slate-100 hover:bg-slate-50">
+                            ${celulas(l).map(c => `<td class="py-2.5 pr-3 text-slate-700">${escapeHtml(c)}</td>`).join('')}
+                            <td class="py-2.5 text-right font-bold whitespace-nowrap ${corTexto}">${formatarMoeda(l.valor)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>`;
+        }
+
+        function limparFiltrosDetalheDashboard() {
+            ['dd-busca', 'dd-categoria', 'dd-banco', 'dd-responsavel', 'dd-origem'].forEach(id => { document.getElementById(id).value = ''; });
+            renderDetalheDashboard();
+        }
+
+        function fecharDetalheDashboard() {
+            const modal = document.getElementById('modal-detalhe-dashboard');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
         function atualizarTotaisProjetadosDashboard() {
             if (document.getElementById('dashboard-mes').value) atualizarDashboard();
         }
@@ -3048,7 +3224,7 @@
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') fecharModalLancamentoCategoria();
+            if (e.key === 'Escape') { fecharModalLancamentoCategoria(); fecharDetalheDashboard(); }
         });
 
         // =====================================================================
