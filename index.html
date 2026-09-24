@@ -13,6 +13,7 @@
     <!-- jsPDF + AutoTable para geração de PDF do histórico de transações -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     
     <!-- Firebase App (Modular) e Firestore -->
     <script type="module">
@@ -190,10 +191,20 @@
 
                 <!-- TAB: DASHBOARD -->
                 <section id="tab-dashboard" class="space-y-6">
+                    <div class="bg-white px-5 py-4 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                        <span class="text-sm font-semibold text-slate-700"><i class="fa-solid fa-filter text-emerald-600 mr-2"></i>Filtros do dashboard</span>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="sr-only" for="dashboard-mes">Mês do dashboard</label>
+                            <input type="month" id="dashboard-mes" onchange="atualizarDashboard()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500">
+                            <label class="sr-only" for="dashboard-responsavel">Responsável do dashboard</label>
+                            <select id="dashboard-responsavel" onchange="atualizarDashboard()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500"><option value="">Todos os responsáveis</option></select>
+                            <button type="button" onclick="limparFiltrosDashboard()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-semibold"><i class="fa-solid fa-filter-circle-xmark mr-1"></i>Limpar filtros</button>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
                         <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
                             <div>
-                                <p class="text-xs md:text-sm font-medium text-slate-500">Saldo Total (Efetivo)</p>
+                                <p id="dashboard-saldo-titulo" class="text-xs md:text-sm font-medium text-slate-500">Saldo Total (até o mês)</p>
                                 <h3 id="card-saldo" class="text-xl md:text-2xl font-bold text-slate-900 mt-1">R$ 0,00</h3>
                             </div>
                             <div class="bg-blue-50 text-blue-600 p-3 rounded-xl"><i class="fa-solid fa-wallet text-lg md:text-xl"></i></div>
@@ -214,32 +225,39 @@
                         </div>
                     </div>
 
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                        <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                            <div><p class="text-xs md:text-sm font-medium text-slate-500">Receitas Projetadas (Mês)</p><h3 id="card-receitas-projetadas" class="text-xl md:text-2xl font-bold text-emerald-600 mt-1">R$ 0,00</h3></div>
+                            <div class="bg-emerald-50 text-emerald-600 p-3 rounded-xl"><i class="fa-solid fa-chart-line text-lg md:text-xl"></i></div>
+                        </div>
+                        <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                            <div><p class="text-xs md:text-sm font-medium text-slate-500">Despesas Projetadas (Mês)</p><h3 id="card-despesas-projetadas" class="text-xl md:text-2xl font-bold text-rose-600 mt-1">R$ 0,00</h3></div>
+                            <div class="bg-rose-50 text-rose-600 p-3 rounded-xl"><i class="fa-solid fa-chart-column text-lg md:text-xl"></i></div>
+                        </div>
+                        <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                            <div><p class="text-xs md:text-sm font-medium text-slate-500">Saldo das Projeções (Mês)</p><h3 id="card-saldo-projetado" class="text-xl md:text-2xl font-bold text-slate-900 mt-1">R$ 0,00</h3></div>
+                            <div class="bg-indigo-50 text-indigo-600 p-3 rounded-xl"><i class="fa-solid fa-scale-balanced text-lg md:text-xl"></i></div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="lg:col-span-2 space-y-6">
                             <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
                                     <h3 class="text-sm md:text-base font-bold text-slate-800">Despesas por Categoria</h3>
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <select id="filtro-grafico-tipo" onchange="mudarTipoFiltroGraficoDespesas()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-slate-50 outline-none">
-                                            <option value="mes">Por Mês</option>
-                                            <option value="ano">Por Ano</option>
-                                            <option value="total">Total Geral</option>
-                                        </select>
-                                        <input type="month" id="filtro-grafico-mes-input" onchange="atualizarGraficoDespesasFiltro()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none">
-                                        <select id="filtro-grafico-ano-input" onchange="atualizarGraficoDespesasFiltro()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none hidden"></select>
-                                    </div>
+                                    <span class="text-xs text-slate-500">Mês selecionado no painel</span>
                                 </div>
                                 <div class="h-60 md:h-64"><canvas id="chartDespesasFiltradas"></canvas></div>
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100">
-                                    <h3 class="text-sm md:text-base font-bold text-slate-800 mb-4">Visão Geral de Movimentações</h3>
-                                    <div class="h-60 md:h-64"><canvas id="mainChart"></canvas></div>
+                                    <h3 class="text-xs md:text-sm font-bold text-slate-800 mb-4">Visão Geral de Movimentações</h3>
+                                    <div class="h-52 md:h-56"><canvas id="mainChart"></canvas></div>
                                 </div>
                                 <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100">
-                                    <h3 class="text-sm md:text-base font-bold text-slate-800 mb-4">Despesas: Fixas vs Variáveis (Mês)</h3>
-                                    <div class="h-60 md:h-64"><canvas id="chartFixaVariavel"></canvas></div>
+                                    <h3 class="text-xs md:text-sm font-bold text-slate-800 mb-4">Despesas: Fixas vs Variáveis (Mês)</h3>
+                                    <div class="h-52 md:h-56"><canvas id="chartFixaVariavel"></canvas></div>
                                 </div>
                             </div>
                         </div>
@@ -316,6 +334,14 @@
                                 <input type="number" min="1" max="120" id="tx-parcelas" value="1" required oninput="atualizarPreviewParcelas()" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                                 <p id="tx-parcelas-preview" class="text-[11px] text-slate-500 mt-1"></p>
                             </div>
+                            <div id="div-tx-recorrente" class="sm:col-span-2 md:col-span-1" style="display:none;">
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Receita Recorrente?</label>
+                                <label class="flex items-center gap-2 border border-slate-200 rounded-lg p-2.5 text-sm bg-white cursor-pointer select-none">
+                                    <input type="checkbox" id="tx-recorrente" checked class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                                    <span class="text-slate-700">Repete todo mês (entra nas Projeções)</span>
+                                </label>
+                                <p class="text-[11px] text-slate-500 mt-1">Desmarque quando esta receita deixar de se repetir (ex.: último mês de um salário). A partir daí ela para de ser projetada.</p>
+                            </div>
                             <div class="sm:col-span-2 md:col-span-3 flex flex-col sm:flex-row justify-end gap-2 pt-2">
                                 <button type="button" id="btn-cancelar-edicao" onclick="cancelarEdicao()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Cancelar</button>
                                 <button type="submit" id="btn-salvar-tx" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Salvar Transação</button>
@@ -325,7 +351,7 @@
 
                     <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100">
                         <h3 class="text-base font-bold text-slate-800 mb-4"><i class="fa-solid fa-credit-card mr-2 text-indigo-600"></i>Pagar Fatura de Cartão de Crédito</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 mb-1">Selecione o Cartão (Banco)</label>
                                 <select id="fatura-cartao" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"></select>
@@ -335,13 +361,10 @@
                                 <input type="month" id="fatura-mes" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">Conta Bancária para Débito</label>
-                                <select id="fatura-banco-debito" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"></select>
-                            </div>
-                            <div>
                                 <button type="button" onclick="pagarFaturaCartao()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Pagar Fatura</button>
                             </div>
                         </div>
+                        <p class="text-xs text-slate-500 mt-3">Mantém as compras no histórico com status Fatura Fechada. Não é gerado lançamento de compensação; o débito na conta bancária pode ser registrado separadamente.</p>
                     </div>
 
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -475,6 +498,15 @@
                         <div class="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center">
                             <h3 class="text-sm md:text-base font-bold text-slate-800"><i class="fa-solid fa-credit-card mr-2 text-indigo-600"></i>Acompanhamento de Compras Parceladas</h3>
                         </div>
+                        <div class="p-4 md:p-6 grid grid-cols-1 sm:grid-cols-3 gap-3 border-b border-slate-100">
+                            <input id="parc-filtro-busca" type="search" placeholder="Pesquisar compra..." oninput="processarMenuParcelados()" aria-label="Pesquisar compra" class="border border-slate-200 rounded-lg p-2.5 text-sm outline-none">
+                            <select id="parc-filtro-banco" onchange="processarMenuParcelados()" aria-label="Filtrar banco ou cartão" class="border border-slate-200 rounded-lg p-2.5 text-sm bg-white outline-none"><option value="">Todos os bancos / cartões</option></select>
+                            <select id="parc-filtro-situacao" onchange="processarMenuParcelados()" aria-label="Filtrar situação" class="border border-slate-200 rounded-lg p-2.5 text-sm bg-white outline-none"><option value="">Todas as situações</option><option value="pendente">Com parcelas a vencer</option><option value="quitada">Quitadas</option></select>
+                        </div>
+                        <div class="px-4 md:px-6 py-3 bg-slate-50 text-sm flex flex-wrap gap-x-8 gap-y-1 border-b border-slate-100">
+                            <span>Valor pago: <strong id="parc-valor-pago" class="text-emerald-700">R$ 0,00</strong></span>
+                            <span>Falta pagar: <strong id="parc-valor-restante" class="text-amber-700">R$ 0,00</strong></span>
+                        </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse text-sm whitespace-nowrap">
                                 <thead>
@@ -485,6 +517,7 @@
                                         <th class="p-3 md:p-4 font-semibold">Pagas</th>
                                         <th class="p-3 md:p-4 font-semibold">A Vencer</th>
                                         <th class="p-3 md:p-4 font-semibold">Valor da Parcela</th>
+                                        <th class="p-3 md:p-4 font-semibold">Valor Pago</th>
                                         <th class="p-3 md:p-4 font-semibold">Valor a Vencer</th>
                                         <th class="p-3 md:p-4 font-semibold">Valor Total</th>
                                     </tr>
@@ -501,15 +534,20 @@
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div>
                                 <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-chart-line mr-2 text-emerald-600"></i>Projeções de Receitas e Despesas</h3>
-                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos últimos 3 meses. Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções.</p>
+                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos últimos 3 meses. Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções. Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
                             </div>
-                            <button type="button" onclick="limparFiltrosProjecoes()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer">
-                                <i class="fa-solid fa-filter-circle-xmark mr-1"></i> Limpar Filtros
-                            </button>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button" onclick="gerarPDFProjecoes()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
+                                    <i class="fa-solid fa-file-pdf"></i> Gerar PDF
+                                </button>
+                                <button type="button" onclick="limparFiltrosProjecoes()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer">
+                                    <i class="fa-solid fa-filter-circle-xmark mr-1"></i> Limpar Filtros
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Filtros de Projeções -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-500 mb-1">Filtrar por Mês (Projeção)</label>
                                 <input type="month" id="proj-filtro-mes" onchange="processarMenuProjecoes()" class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none bg-white">
@@ -533,6 +571,10 @@
                                 <select id="proj-filtro-banco" onchange="processarMenuProjecoes()" class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none bg-white">
                                     <option value="">Todos os Bancos</option>
                                 </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Filtrar por Responsável</label>
+                                <select id="proj-filtro-responsavel" onchange="processarMenuProjecoes()" class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none bg-white"><option value="">Todos os Responsáveis</option></select>
                             </div>
                         </div>
 
@@ -600,6 +642,15 @@
 
                 <!-- TAB: CADASTROS -->
                 <section id="tab-cadastros" class="space-y-6 hidden">
+                    <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100">
+                        <h3 class="text-base font-bold text-slate-800 mb-2"><i class="fa-solid fa-database text-emerald-600 mr-2"></i>Backup e restauração</h3>
+                        <p class="text-xs text-slate-500 mb-4">Baixe uma cópia completa em Excel. Para recuperar os dados, selecione um backup gerado por este sistema. A restauração substitui os dados atuais. O arquivo inclui a senha interna do sistema; guarde-o em local seguro.</p>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button type="button" onclick="exportarBackupExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold"><i class="fa-solid fa-file-excel mr-2"></i>Baixar backup Excel</button>
+                            <label for="arquivo-backup" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-2"></i>Restaurar backup</label>
+                            <input id="arquivo-backup" type="file" accept=".xlsx" onchange="restaurarBackupExcel(event)" class="sr-only">
+                        </div>
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 md:col-span-2">
                             <h3 id="form-banco-title" class="text-base font-bold text-slate-800 mb-4">Cadastrar Bancos e Saldo Inicial</h3>
@@ -794,6 +845,13 @@
                     <input type="number" min="1" max="120" id="lc-parcelas" value="1" required oninput="atualizarPreviewLC()" class="w-full sm:w-40 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                     <p id="lc-preview" class="text-[11px] text-slate-500 mt-1"></p>
                 </div>
+                <div id="lc-div-recorrente" class="sm:col-span-2" style="display:none;">
+                    <label class="flex items-center gap-2 border border-slate-200 rounded-lg p-2.5 text-sm bg-white cursor-pointer select-none w-full sm:w-auto">
+                        <input type="checkbox" id="lc-recorrente" checked class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                        <span class="text-slate-700">Receita recorrente (repete todo mês, entra nas Projeções)</span>
+                    </label>
+                    <p class="text-[11px] text-slate-500 mt-1">Desmarque quando esta receita deixar de se repetir a partir deste lançamento.</p>
+                </div>
                 <div class="sm:col-span-2 flex gap-2 justify-end pt-2">
                     <button type="button" onclick="fecharModalLancamentoCategoria()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Cancelar</button>
                     <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Salvar Lançamento</button>
@@ -956,10 +1014,93 @@
             if (db.tipoDespesas && db.tipoDespesas.length > 0 && typeof db.tipoDespesas[0] === 'string') {
                 db.tipoDespesas = db.tipoDespesas.map(nome => ({ nome, classificacao: 'variavel' }));
             }
+
+            // Receitas lançadas antes deste recurso são consideradas recorrentes por padrão (mantém o comportamento anterior)
+            if (db.transacoes) {
+                db.transacoes.forEach(t => {
+                    if (t.tipo === 'receita' && t.recorrente === undefined) t.recorrente = true;
+                });
+            }
         }
 
         function formatarMoeda(valor) {
             return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        const FORMATO_BACKUP = 'FinancasApp-backup-v1';
+
+        function validarDadosBackup(dados) {
+            if (!dados || typeof dados !== 'object' || Array.isArray(dados)) throw new Error('Dados do backup inválidos.');
+            const listas = ['bancos', 'responsaveis', 'pagamentos', 'tipoDespesas', 'tipoReceitas', 'impostos', 'transacoes'];
+            if (listas.some(campo => !Array.isArray(dados[campo]))) throw new Error('O arquivo não contém todos os cadastros e lançamentos necessários.');
+            if (dados.transacoes.some(t => !t || typeof t !== 'object' || typeof t.descricao !== 'string' || typeof t.data !== 'string' || typeof t.valor !== 'number' || !Number.isFinite(t.valor))) {
+                throw new Error('Há lançamentos inválidos no backup.');
+            }
+            if (dados.bancos.some(b => !b || typeof b !== 'object' || typeof b.nome !== 'string')) throw new Error('Há bancos inválidos no backup.');
+            const mapas = ['projecoesEditadas', 'projecoesDescricoesEditadas', 'projecoesExcluidas', 'projecoesPeriodicidade'];
+            if (mapas.some(campo => dados[campo] !== undefined && (!dados[campo] || typeof dados[campo] !== 'object' || Array.isArray(dados[campo])))) {
+                throw new Error('As configurações de projeções estão inválidas.');
+            }
+        }
+
+        function exportarBackupExcel() {
+            if (!window.XLSX) { alert('Não foi possível carregar o recurso de Excel. Verifique a conexão e tente novamente.'); return; }
+            try {
+                validarDadosBackup(db);
+                const livro = XLSX.utils.book_new();
+                const json = JSON.stringify(db);
+                const caracteres = Array.from(json);
+                const partes = [];
+                for (let i = 0; i < caracteres.length; i += 15000) partes.push(caracteres.slice(i, i + 15000).join(''));
+                const identificacao = XLSX.utils.aoa_to_sheet([
+                    ['Formato', FORMATO_BACKUP], ['Criado em', new Date().toISOString()],
+                    ['Número de partes', partes.length], ['Transações', db.transacoes.length], ['Comprimento JSON', json.length],
+                    ['Instrução', 'Use Restaurar backup no sistema. Não altere a aba DadosBackup.']
+                ]);
+                XLSX.utils.book_append_sheet(livro, identificacao, 'Informacoes');
+                const transacoes = XLSX.utils.json_to_sheet(db.transacoes.length ? db.transacoes : [{ informacao: 'Sem transações' }]);
+                XLSX.utils.book_append_sheet(livro, transacoes, 'Transacoes');
+                const cadastros = Object.entries(db).filter(([, valor]) => Array.isArray(valor) && valor !== db.transacoes)
+                    .flatMap(([grupo, itens]) => itens.map(item => ({ Grupo: grupo, Valor: JSON.stringify(item) })));
+                XLSX.utils.book_append_sheet(livro, XLSX.utils.json_to_sheet(cadastros.length ? cadastros : [{ Grupo: '', Valor: '' }]), 'Cadastros');
+                XLSX.utils.book_append_sheet(livro, XLSX.utils.aoa_to_sheet([['Parte', 'Conteudo'], ...partes.map((parte, i) => [i + 1, parte])]), 'DadosBackup');
+                XLSX.writeFile(livro, `backup_financas_${new Date().toLocaleDateString('sv-SE')}.xlsx`);
+            } catch (erro) { alert(`Não foi possível gerar o backup: ${erro.message}`); }
+        }
+
+        async function restaurarBackupExcel(event) {
+            const campo = event.target;
+            const arquivo = campo.files?.[0];
+            if (!arquivo) return;
+            try {
+                if (!window.XLSX) throw new Error('O recurso de Excel não carregou. Verifique a conexão.');
+                if (!arquivo.name.toLowerCase().endsWith('.xlsx') || arquivo.size > 32 * 1024 * 1024) throw new Error('Selecione um backup .xlsx de até 32 MB.');
+                const livro = XLSX.read(await arquivo.arrayBuffer(), { type: 'array' });
+                if (!livro.Sheets.Informacoes || !livro.Sheets.DadosBackup) throw new Error('Este arquivo não é um backup do FinançasApp.');
+                const info = XLSX.utils.sheet_to_json(livro.Sheets.Informacoes, { header: 1, raw: true });
+                const propriedades = Object.fromEntries(info.filter(linha => Array.isArray(linha) && linha.length >= 2));
+                if (propriedades.Formato !== FORMATO_BACKUP) throw new Error('Formato de backup incompatível.');
+                const numeroPartes = Number(propriedades['Número de partes']);
+                const linhas = XLSX.utils.sheet_to_json(livro.Sheets.DadosBackup, { header: 1, raw: true }).slice(1);
+                if (!Number.isInteger(numeroPartes) || numeroPartes < 1 || linhas.length !== numeroPartes || linhas.some((linha, i) => Number(linha[0]) !== i + 1 || typeof linha[1] !== 'string')) {
+                    throw new Error('O conteúdo do backup está incompleto.');
+                }
+                const jsonBackup = linhas.map(linha => linha[1]).join('');
+                if (jsonBackup.length !== Number(propriedades['Comprimento JSON'])) throw new Error('O conteúdo do backup foi alterado ou está incompleto.');
+                const dados = JSON.parse(jsonBackup);
+                validarDadosBackup(dados);
+                if (dados.transacoes.length !== Number(propriedades['Transações'])) throw new Error('A quantidade de transações não confere.');
+                if (!confirm(`Restaurar ${dados.transacoes.length} transação(ões) e todos os cadastros de ${arquivo.name}? Os dados atuais serão substituídos.`)) return;
+                if (!window.setDoc || !window.docRef) throw new Error('A conexão com o banco de dados não está disponível. Tente novamente quando estiver conectado.');
+                await window.setDoc(window.docRef, { conteudo: JSON.stringify(dados) });
+                db = dados;
+                normalizarBancoDados();
+                initApp();
+                alert('Backup restaurado com sucesso.');
+            } catch (erro) {
+                console.error('Falha na restauração:', erro);
+                alert(`Não foi possível restaurar o backup: ${erro.message}`);
+            } finally { campo.value = ''; }
         }
 
         function saveData() {
@@ -1022,7 +1163,7 @@
         document.getElementById('current-date').innerText = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         document.getElementById('tx-data').valueAsDate = new Date();
         document.getElementById('fatura-mes').value = new Date().toISOString().slice(0, 7);
-        document.getElementById('filtro-grafico-mes-input').value = new Date().toISOString().slice(0, 7);
+        document.getElementById('dashboard-mes').value = new Date().toLocaleDateString('sv-SE').slice(0, 7);
 
         function limparFiltros() {
             document.getElementById('filtro-mes').value = '';
@@ -1141,12 +1282,227 @@
             doc.save(nomeArquivo);
         }
 
+
+        function gerarPDFProjecoes() {
+            if (!window.jspdf) {
+                alert('A biblioteca de geração de PDF ainda está carregando. Aguarde alguns segundos e tente novamente.');
+                return;
+            }
+
+            const dados = window.ultimasProjecoesPdf;
+            if (!dados || dados.linhas.length === 0) {
+                alert('Não há projeções para gerar o PDF com os filtros atuais.');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const larguraPagina = doc.internal.pageSize.getWidth();
+            const margem = 40;
+            const larguraUtil = larguraPagina - margem * 2;
+
+            // ---- Filtros ativos ----
+            const fMes = document.getElementById('proj-filtro-mes').value;
+            const fTipo = document.getElementById('proj-filtro-tipo').value;
+            const fCat = document.getElementById('proj-filtro-categoria').value;
+            const fBanco = document.getElementById('proj-filtro-banco').value;
+            const fResp = document.getElementById('proj-filtro-responsavel').value;
+            const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+            const tipoLabelsMap = { receita: 'Receita', despesa: 'Despesa' };
+
+            const filtrosAtivos = [];
+            if (fMes) {
+                const [ano, mes] = fMes.split('-');
+                filtrosAtivos.push(`Mês: ${nomesMeses[parseInt(mes, 10) - 1]}/${ano}`);
+            }
+            if (fTipo) filtrosAtivos.push(`Tipo: ${tipoLabelsMap[fTipo] || fTipo}`);
+            if (fCat) filtrosAtivos.push(`Categoria: ${fCat}`);
+            if (fBanco) filtrosAtivos.push(`Banco: ${fBanco}`);
+            if (fResp) filtrosAtivos.push(`Responsável: ${fResp}`);
+
+            // ---- Cabeçalho ----
+            doc.setFontSize(16);
+            doc.setTextColor(30, 41, 59);
+            doc.text('Projeções de Receitas e Despesas', margem, 40);
+
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+            const agora = new Date();
+            doc.text(`Gerado em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR')}`, margem, 56);
+            const textoFiltros = filtrosAtivos.length
+                ? `Filtros aplicados: ${filtrosAtivos.join('  |  ')}`
+                : 'Filtros aplicados: nenhum (todas as projeções)';
+            const linhasFiltros = doc.splitTextToSize(textoFiltros, larguraUtil);
+            doc.text(linhasFiltros, margem, 70);
+            let y = 70 + linhasFiltros.length * 11 + 8;
+
+            // ---- Cartões de subtotais ----
+            const gap = 12;
+            const larguraCard = (larguraUtil - gap * 2) / 3;
+            const alturaCard = 44;
+            const cards = [
+                { titulo: 'Subtotal Receitas Projetadas', valor: dados.subtotalReceitas, fundo: [236, 253, 245], borda: [167, 243, 208], cor: [4, 120, 87] },
+                { titulo: 'Subtotal Despesas Projetadas', valor: dados.subtotalDespesas, fundo: [255, 241, 242], borda: [254, 205, 211], cor: [190, 18, 60] },
+                { titulo: 'Saldo Projetado (filtro atual)', valor: dados.saldo, fundo: [248, 250, 252], borda: [226, 232, 240], cor: dados.saldo >= 0 ? [30, 41, 59] : [190, 18, 60] }
+            ];
+            cards.forEach((c, i) => {
+                const x = margem + i * (larguraCard + gap);
+                doc.setFillColor(...c.fundo);
+                doc.setDrawColor(...c.borda);
+                doc.roundedRect(x, y, larguraCard, alturaCard, 6, 6, 'FD');
+                doc.setFontSize(8.5);
+                doc.setTextColor(...c.cor);
+                doc.setFont(undefined, 'normal');
+                doc.text(c.titulo, x + 12, y + 16);
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.text(formatarMoeda(c.valor), x + 12, y + 35);
+            });
+            doc.setFont(undefined, 'normal');
+            y += alturaCard + 18;
+
+            // ---- Gráfico (renderizado fora da tela em tamanho fixo, com fundo branco) ----
+            doc.setFontSize(11);
+            doc.setTextColor(30, 41, 59);
+            doc.setFont(undefined, 'bold');
+            doc.text('Receita x Despesa Projetada (mês a mês)', margem, y);
+            doc.setFont(undefined, 'normal');
+            y += 8;
+
+            const g = dados.grafico;
+            if (g.labels.length > 0 && typeof Chart !== 'undefined') {
+                const canvas = document.createElement('canvas');
+                canvas.width = 1600;
+                canvas.height = 560;
+                const chartPdf = new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: g.labels,
+                        datasets: [
+                            { label: 'Receitas', data: g.receitas, backgroundColor: '#10b981', borderRadius: 4 },
+                            { label: 'Despesas', data: g.despesas, backgroundColor: '#f43f5e', borderRadius: 4 }
+                        ]
+                    },
+                    options: {
+                        responsive: false,
+                        animation: false,
+                        devicePixelRatio: 1,
+                        plugins: { legend: { position: 'bottom', labels: { font: { size: 24 } } } },
+                        scales: {
+                            x: { ticks: { font: { size: 22 } } },
+                            y: { beginAtZero: true, ticks: { font: { size: 22 }, callback: (v) => formatarMoeda(v) } }
+                        }
+                    },
+                    plugins: [{
+                        id: 'fundoBranco',
+                        beforeDraw: (chart) => {
+                            const c = chart.ctx;
+                            c.save();
+                            c.globalCompositeOperation = 'destination-over';
+                            c.fillStyle = '#ffffff';
+                            c.fillRect(0, 0, chart.width, chart.height);
+                            c.restore();
+                        }
+                    }]
+                });
+                const imgData = canvas.toDataURL('image/png');
+                chartPdf.destroy();
+
+                const alturaImg = larguraUtil * (canvas.height / canvas.width);
+                doc.addImage(imgData, 'PNG', margem, y, larguraUtil, alturaImg);
+                y += alturaImg + 10;
+            } else {
+                doc.setFontSize(9);
+                doc.setTextColor(100, 116, 139);
+                doc.text('Sem dados para exibir no gráfico.', margem, y + 14);
+                y += 30;
+            }
+
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text('O gráfico compara todos os meses e respeita os filtros de Categoria, Banco e Responsável (não usa os filtros de Mês e Tipo).', margem, y);
+
+            // ---- Detalhamento (tabela) em nova página ----
+            doc.addPage();
+            doc.setFontSize(12);
+            doc.setTextColor(30, 41, 59);
+            doc.setFont(undefined, 'bold');
+            doc.text('Detalhamento das Projeções', margem, 40);
+            doc.setFont(undefined, 'normal');
+            if (dados.qtdExcluidas > 0) {
+                doc.setFontSize(8);
+                doc.setTextColor(100, 116, 139);
+                doc.text(`${dados.qtdExcluidas} linha(s) marcada(s) como excluída(s) não estão incluídas neste relatório nem nos totais.`, margem, 54);
+            }
+
+            const capitalizar = (txt) => txt ? txt.charAt(0).toUpperCase() + txt.slice(1) : txt;
+            const origemLabel = { recorrente: 'Recorrente', parcelado: 'Parcelado' };
+
+            const corpo = dados.linhas.map(pj => [
+                capitalizar(pj.mesAnoLabel),
+                pj.descricao,
+                origemLabel[pj.origem] || pj.origem,
+                tipoLabelsMap[pj.tipo] || pj.tipo,
+                pj.categoria,
+                pj.banco,
+                pj.responsavel || 'Geral',
+                formatarMoeda(pj.valorBase),
+                formatarMoeda(pj.valorProjetado)
+            ]);
+
+            const rodape = [
+                [{ content: 'Subtotal Receitas', colSpan: 8, styles: { halign: 'right' } }, { content: formatarMoeda(dados.subtotalReceitas), styles: { halign: 'right', textColor: [4, 120, 87] } }],
+                [{ content: 'Subtotal Despesas', colSpan: 8, styles: { halign: 'right' } }, { content: formatarMoeda(dados.subtotalDespesas), styles: { halign: 'right', textColor: [190, 18, 60] } }],
+                [{ content: 'Saldo Projetado', colSpan: 8, styles: { halign: 'right' } }, { content: formatarMoeda(dados.saldo), styles: { halign: 'right', textColor: dados.saldo >= 0 ? [30, 41, 59] : [190, 18, 60] } }]
+            ];
+
+            doc.autoTable({
+                head: [['Mês', 'Descrição', 'Origem', 'Tipo', 'Categoria', 'Banco', 'Responsável', 'Valor Base', 'Valor Projetado']],
+                body: corpo,
+                foot: rodape,
+                showFoot: 'lastPage',
+                startY: dados.qtdExcluidas > 0 ? 62 : 52,
+                styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
+                headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+                footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right', fontStyle: 'bold' } },
+                margin: { left: margem, right: margem },
+                didParseCell: (data) => {
+                    // Colore o Tipo e o Valor Projetado conforme receita/despesa
+                    if (data.section === 'body' && (data.column.index === 3 || data.column.index === 8)) {
+                        const ehReceita = dados.linhas[data.row.index].tipo === 'receita';
+                        data.cell.styles.textColor = ehReceita ? [4, 120, 87] : [190, 18, 60];
+                    }
+                }
+            });
+
+            // ---- Numeração de páginas ----
+            const totalPaginas = doc.getNumberOfPages();
+            const alturaPagina = doc.internal.pageSize.getHeight();
+            for (let i = 1; i <= totalPaginas; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(148, 163, 184);
+                doc.text(`Página ${i} de ${totalPaginas}`, larguraPagina - margem, alturaPagina - 20, { align: 'right' });
+            }
+
+            doc.save(`projecoes_${new Date().toISOString().slice(0, 10)}.pdf`);
+        }
+
         function limparFiltrosProjecoes() {
             document.getElementById('proj-filtro-mes').value = '';
             document.getElementById('proj-filtro-tipo').value = '';
             document.getElementById('proj-filtro-categoria').value = '';
             document.getElementById('proj-filtro-banco').value = '';
+            document.getElementById('proj-filtro-responsavel').value = '';
             processarMenuProjecoes();
+        }
+
+        function limparFiltrosDashboard() {
+            document.getElementById('dashboard-mes').value = new Date().toLocaleDateString('sv-SE').slice(0, 7);
+            document.getElementById('dashboard-responsavel').value = '';
+            atualizarDashboard();
         }
 
         function toggleSelecionarTodas(masterCheckbox) {
@@ -1374,6 +1730,13 @@
                 let opcoesDespesas = [...db.tipoDespesas.map(td => td.nome), ...db.impostos.map(i => `Imposto: ${i}`)];
                 categoriaSelect.innerHTML = opcoesDespesas.map(item => `<option value="${item}">${item}</option>`).join('');
             }
+            atualizarVisibilidadeRecorrente();
+        }
+
+        function atualizarVisibilidadeRecorrente() {
+            const tipo = document.getElementById('tx-tipo').value;
+            const div = document.getElementById('div-tx-recorrente');
+            if (div) div.style.display = tipo === 'receita' ? 'block' : 'none';
         }
 
         function montarOpcoesStatus(pagamento) {
@@ -1445,7 +1808,8 @@
                     responsavel: d.responsavel,
                     classificacao: classificacao,
                     data: adicionarMeses(d.dataStr, i),
-                    status: d.status
+                    status: d.status,
+                    recorrente: d.tipo === 'receita' ? (d.recorrente !== false) : undefined
                 });
             }
         }
@@ -1488,7 +1852,8 @@
                 responsavel: document.getElementById('tx-responsavel').value,
                 dataStr: document.getElementById('tx-data').value,
                 status: document.getElementById('tx-status').value,
-                parcelas: Math.max(1, parseInt(document.getElementById('tx-parcelas').value) || 1)
+                parcelas: Math.max(1, parseInt(document.getElementById('tx-parcelas').value) || 1),
+                recorrente: document.getElementById('tx-recorrente') ? document.getElementById('tx-recorrente').checked : true
             };
 
             if (idEdicao) {
@@ -1505,6 +1870,7 @@
                     tx.classificacao = classificarCategoria(dados.tipo, dados.categoria);
                     tx.data = dados.dataStr;
                     tx.status = dados.status;
+                    tx.recorrente = dados.tipo === 'receita' ? dados.recorrente : undefined;
 
                     // Parcelar ao editar: esta transação vira a 1/N e as demais são criadas nos meses seguintes
                     if (!sufixo && dados.parcelas > 1) {
@@ -1519,6 +1885,7 @@
                 document.getElementById('form-transacao').reset();
                 document.getElementById('tx-data').valueAsDate = new Date();
                 document.getElementById('tx-parcelas').value = '1';
+                document.getElementById('tx-recorrente').checked = true;
                 atualizarStatusOpcoes();
                 atualizarCategoriasSelect();
                 atualizarPreviewParcelas();
@@ -1544,6 +1911,8 @@
             document.getElementById('tx-status').value = tx.status;
             document.getElementById('tx-parcelas').value = '1';
             configurarCampoParcelas(true, REGEX_SUFIXO_PARCELA.test(tx.descricao));
+            document.getElementById('tx-recorrente').checked = tx.recorrente !== false;
+            atualizarVisibilidadeRecorrente();
 
             document.getElementById('form-title').innerText = 'Editar Transação';
             document.getElementById('btn-salvar-tx').innerText = 'Atualizar Transação';
@@ -1556,6 +1925,7 @@
             document.getElementById('tx-id').value = '';
             document.getElementById('tx-data').valueAsDate = new Date();
             document.getElementById('tx-parcelas').value = '1';
+            document.getElementById('tx-recorrente').checked = true;
             document.getElementById('form-title').innerText = 'Nova Transação';
             document.getElementById('btn-salvar-tx').innerText = 'Salvar Transação';
             document.getElementById('btn-cancelar-edicao').classList.add('hidden');
@@ -1569,12 +1939,21 @@
             saveData();
         }
 
+        // Liga/desliga a recorrência de uma receita já lançada. Útil para encerrar uma
+        // recorrência sem precisar editar todos os campos da transação (ex.: "salário parou em setembro":
+        // basta marcar o lançamento de setembro como "não recorrente" para que outubro em diante deixe de ser projetado).
+        function toggleRecorrenciaTransacao(id) {
+            const tx = db.transacoes.find(t => t.id === id);
+            if (!tx || tx.tipo !== 'receita') return;
+            tx.recorrente = !(tx.recorrente !== false);
+            saveData();
+        }
+
         function pagarFaturaCartao() {
             const cartao = document.getElementById('fatura-cartao').value;
             const mesCompetencia = document.getElementById('fatura-mes').value;
-            const bancoDebito = document.getElementById('fatura-banco-debito').value;
 
-            if (!cartao || !mesCompetencia || !bancoDebito) {
+            if (!cartao || !mesCompetencia) {
                 alert('Preencha todos os campos para o pagamento da fatura.');
                 return;
             }
@@ -1583,52 +1962,21 @@
             let qtdBaixadas = 0;
 
             db.transacoes.forEach(t => {
-                if (t.banco === cartao && t.pagamento === 'Cartão de Crédito' && t.data.startsWith(mesCompetencia)) {
-                    if (t.status !== 'pago') {
+                if (t.banco === cartao && t.pagamento === 'Cartão de Crédito' && t.data?.startsWith(mesCompetencia)) {
+                    if (t.status !== 'pago' && t.status !== 'fatura_fechada') {
                         valorTotalFatura += t.valor;
-                        t.status = 'pago';
+                        t.status = 'fatura_fechada';
                         qtdBaixadas++;
                     }
                 }
             });
 
             if (qtdBaixadas === 0) {
-                alert('Nenhuma transação em aberto/fechada encontrada para este cartão neste mês.');
+                alert('Nenhuma compra pendente encontrada para este cartão neste mês.');
                 return;
             }
 
-            const compensacaoDebito = {
-                id: Date.now(),
-                tipo: 'compensacao_fatura',
-                descricao: `Pagamento Fatura ${cartao} (${mesCompetencia})`,
-                valor: valorTotalFatura,
-                banco: bancoDebito,
-                pagamento: 'PIX / Débito',
-                categoria: 'Cartão de Crédito',
-                responsavel: 'Geral',
-                classificacao: null,
-                data: new Date().toISOString().split('T')[0],
-                status: 'pago'
-            };
-
-            const compensacaoCredito = {
-                id: Date.now() + 1,
-                tipo: 'compensacao_fatura',
-                descricao: `Baixa Fatura ${cartao} (${mesCompetencia})`,
-                valor: valorTotalFatura,
-                banco: cartao,
-                pagamento: 'Compensação',
-                categoria: 'Cartão de Crédito',
-                responsavel: 'Geral',
-                classificacao: null,
-                data: new Date().toISOString().split('T')[0],
-                status: 'pago'
-            };
-
-            db.transacoes.push(compensacaoDebito);
-            db.transacoes.push(compensacaoCredito);
-
-            alert(`Fatura paga com sucesso! ${qtdBaixadas} lançamentos baixados e debitados de ${bancoDebito}.`);
+            alert(`Fatura registrada! ${qtdBaixadas} compra(s) mantida(s) no histórico como Fatura Fechada (total de ${formatarMoeda(valorTotalFatura)}).`);
             saveData();
         }
 
@@ -1637,107 +1985,43 @@
         let myChartDespesasFiltradas = null;
         let myChartProjecoesMensal = null;
 
-        function mudarTipoFiltroGraficoDespesas() {
-            const tipo = document.getElementById('filtro-grafico-tipo').value;
-            const mesInput = document.getElementById('filtro-grafico-mes-input');
-            const anoInput = document.getElementById('filtro-grafico-ano-input');
-
-            if (tipo === 'mes') {
-                mesInput.classList.remove('hidden');
-                anoInput.classList.add('hidden');
-            } else if (tipo === 'ano') {
-                mesInput.classList.add('hidden');
-                anoInput.classList.remove('hidden');
-                carregarAnosDisponiveis();
-            } else {
-                mesInput.classList.add('hidden');
-                anoInput.classList.add('hidden');
-            }
-            atualizarGraficoDespesasFiltro();
-        }
-
-        function carregarAnosDisponiveis() {
-            const anosSet = new Set();
-            db.transacoes.forEach(t => {
-                if (t.data) anosSet.add(t.data.slice(0, 4));
-            });
-            const anoAtual = new Date().getFullYear().toString();
-            anosSet.add(anoAtual);
-
-            const anosArr = Array.from(anosSet).sort().reverse();
-            const anoSelect = document.getElementById('filtro-grafico-ano-input');
-            anoSelect.innerHTML = anosArr.map(ano => `<option value="${ano}">${ano}</option>`).join('');
-        }
-
         function atualizarGraficoDespesasFiltro() {
-            const tipoFiltro = document.getElementById('filtro-grafico-tipo').value;
-            let filtroValor = '';
-
-            if (tipoFiltro === 'mes') {
-                filtroValor = document.getElementById('filtro-grafico-mes-input').value;
-            } else if (tipoFiltro === 'ano') {
-                filtroValor = document.getElementById('filtro-grafico-ano-input').value;
-            }
-
+            const mes = document.getElementById('dashboard-mes').value;
+            const responsavel = document.getElementById('dashboard-responsavel').value;
             const despesasPorCategoria = {};
-
             db.transacoes.forEach(t => {
-                if (t.tipo === 'despesa') {
-                    let incluir = false;
-                    if (tipoFiltro === 'total') {
-                        incluir = true;
-                    } else if (tipoFiltro === 'ano' && t.data.startsWith(filtroValor)) {
-                        incluir = true;
-                    } else if (tipoFiltro === 'mes' && t.data.startsWith(filtroValor)) {
-                        incluir = true;
-                    }
-
-                    if (incluir) {
-                        const cat = t.categoria || 'Outros';
-                        despesasPorCategoria[cat] = (despesasPorCategoria[cat] || 0) + t.valor;
-                    }
+                if (t.tipo === 'despesa' && t.data && t.data.startsWith(mes) && (!responsavel || (t.responsavel || 'Geral') === responsavel)) {
+                    const cat = t.categoria || 'Outros';
+                    despesasPorCategoria[cat] = (despesasPorCategoria[cat] || 0) + t.valor;
                 }
             });
-
             const labels = Object.keys(despesasPorCategoria);
-            const dataValores = Object.values(despesasPorCategoria);
-
-            const coresFundo = [
-                '#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', 
-                '#ec4899', '#06b6d4', '#84cc16', '#64748b', '#d97706'
-            ];
-
-            const ctxDF = document.getElementById('chartDespesasFiltradas').getContext('2d');
+            const cores = ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#64748b', '#d97706'];
+            const ctx = document.getElementById('chartDespesasFiltradas').getContext('2d');
             if (myChartDespesasFiltradas) myChartDespesasFiltradas.destroy();
-
-            myChartDespesasFiltradas = new Chart(ctxDF, {
+            myChartDespesasFiltradas = new Chart(ctx, {
                 type: 'bar',
-                data: {
-                    labels: labels.length > 0 ? labels : ['Nenhuma despesa'],
-                    datasets: [{
-                        data: dataValores.length > 0 ? dataValores : [0],
-                        backgroundColor: labels.length > 0 ? coresFundo.slice(0, labels.length) : ['#e2e8f0'],
-                        borderWidth: 0,
-                        borderRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: { y: { beginAtZero: true } }
-                }
+                data: { labels: labels.length ? labels : ['Nenhuma despesa'], datasets: [{
+                    data: labels.length ? Object.values(despesasPorCategoria) : [0],
+                    backgroundColor: labels.length ? labels.map((_, i) => cores[i % cores.length]) : ['#e2e8f0'],
+                    borderWidth: 0, borderRadius: 6, maxBarThickness: 34
+                }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+                    tooltip: { callbacks: { label: context => formatarMoeda(context.parsed.y) } } },
+                    scales: { x: { ticks: { font: { size: 10 }, maxRotation: 40, minRotation: 0, autoSkip: false } },
+                        y: { beginAtZero: true, ticks: { font: { size: 10 } } } } }
             });
         }
 
         function initApp() {
+            const filtroRespDashboard = document.getElementById('dashboard-responsavel');
+            const respDashboardAtual = filtroRespDashboard.value;
+            filtroRespDashboard.innerHTML = '<option value="">Todos os responsáveis</option>' + db.responsaveis.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+            filtroRespDashboard.value = db.responsaveis.includes(respDashboardAtual) ? respDashboardAtual : '';
             document.getElementById('tx-banco').innerHTML = db.bancos.map(b => `<option value="${b.nome}">${b.nome}</option>`).join('');
             document.getElementById('tx-pagamento').innerHTML = db.pagamentos.map(p => `<option value="${p}">${p}</option>`).join('');
             document.getElementById('tx-responsavel').innerHTML = db.responsaveis.map(r => `<option value="${r}">${r}</option>`).join('');
             document.getElementById('fatura-cartao').innerHTML = db.bancos.map(b => `<option value="${b.nome}">${b.nome}</option>`).join('');
-            document.getElementById('fatura-banco-debito').innerHTML = db.bancos.map(b => `<option value="${b.nome}">${b.nome}</option>`).join('');
             
             const filtroBancoEl = document.getElementById('filtro-banco');
             const bancoSelecionadoAntigo = filtroBancoEl.value;
@@ -1749,6 +2033,10 @@
             const projBancoAntigo = projFiltroBancoEl.value;
             projFiltroBancoEl.innerHTML = '<option value="">Todos os Bancos</option>' + db.bancos.map(b => `<option value="${b.nome}">${b.nome}</option>`).join('');
             projFiltroBancoEl.value = projBancoAntigo;
+            const projFiltroResponsavel = document.getElementById('proj-filtro-responsavel');
+            const projResponsavelAntigo = projFiltroResponsavel.value;
+            projFiltroResponsavel.innerHTML = '<option value="">Todos os Responsáveis</option>' + db.responsaveis.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+            projFiltroResponsavel.value = db.responsaveis.includes(projResponsavelAntigo) ? projResponsavelAntigo : '';
 
             const filtroRespEl = document.getElementById('filtro-responsavel');
             const respSelecionadoAntigo = filtroRespEl.value;
@@ -1840,10 +2128,6 @@
             const fCat = document.getElementById('filtro-categoria').value;
             const fBusca = document.getElementById('filtro-busca').value.toLowerCase().trim();
 
-            let totalReceitasPagasMes = 0;
-            let totalDespesasPagasMes = 0;
-            let totalDespesasFixasMes = 0;
-            let totalDespesasVariaveisMes = 0;
 
             const tbody = document.getElementById('tabela-transacoes-body');
             
@@ -1905,18 +2189,7 @@
                 </div>
             `;
 
-            const mesAtualStr = new Date().toISOString().slice(0, 7);
-
             tbody.innerHTML = transacoesFiltradas.sort((a,b) => new Date(b.data) - new Date(a.data)).map(t => {
-                if(t.data.startsWith(mesAtualStr)) {
-                    if(t.tipo === 'receita' && t.status === 'pago') totalReceitasPagasMes += t.valor;
-                    else if(t.tipo === 'despesa' && t.status === 'pago') {
-                        totalDespesasPagasMes += t.valor;
-                        if(t.classificacao === 'fixa') totalDespesasFixasMes += t.valor;
-                        else if(t.classificacao === 'variavel') totalDespesasVariaveisMes += t.valor;
-                    }
-                }
-
                 const dataFmt = t.data.split('-').reverse().join('/');
                 
                 let badgeColor = 'bg-slate-50 text-slate-600';
@@ -1946,6 +2219,13 @@
                 else if(t.status === 'fatura_fechada') statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">Fatura Fechada</span>';
                 
                 let classificacaoTag = t.classificacao ? `<span class="ml-1 px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] uppercase font-bold">${t.classificacao}</span>` : '';
+                let recorrenteTag = '';
+                if (t.tipo === 'receita') {
+                    const ativa = t.recorrente !== false;
+                    recorrenteTag = ativa
+                        ? `<span class="ml-1 px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded text-[10px] uppercase font-bold whitespace-nowrap"><i class="fa-solid fa-rotate mr-0.5"></i>Recorrente</span>`
+                        : `<span class="ml-1 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] uppercase font-bold whitespace-nowrap"><i class="fa-solid fa-rotate-left mr-0.5"></i>Não recorrente</span>`;
+                }
                 let responsavelBadge = `<span class="tt-truncar inline-block align-middle max-w-[9rem] truncate bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium"><i class="fa-solid fa-user-tag mr-1 text-[10px]"></i>${escapeHtml(t.responsavel || 'Geral')}</span>`;
 
                 return `
@@ -1955,13 +2235,14 @@
                         </td>
                         <td class="p-3 md:p-4">${dataFmt}</td>
                         <td class="p-3 md:p-4 font-medium"><span class="tt-truncar block truncate max-w-[16rem] md:max-w-xs">${escapeHtml(t.descricao)}</span></td>
-                        <td class="p-3 md:p-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeColor}">${tipoLabel}</span> ${classificacaoTag}</td>
+                        <td class="p-3 md:p-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeColor}">${tipoLabel}</span> ${classificacaoTag}${recorrenteTag}</td>
                         <td class="p-3 md:p-4"><span class="tt-truncar inline-block align-middle max-w-[10rem] truncate text-slate-600 bg-slate-100 px-2 py-1 rounded text-xs">${escapeHtml(t.categoria || 'Geral')}</span></td>
                         <td class="p-3 md:p-4">${responsavelBadge}</td>
                         <td class="p-3 md:p-4"><span class="tt-truncar block truncate max-w-[10rem]">${escapeHtml(t.banco)}</span><span class="tt-truncar text-xs text-slate-400 block truncate max-w-[10rem]">${escapeHtml(t.pagamento)}</span></td>
                         <td class="p-3 md:p-4">${statusBadge}</td>
                         <td class="p-3 md:p-4 font-bold ${valorClasse}">${sinal}${formatarMoeda(t.valor)}</td>
                         <td class="p-3 md:p-4 text-center space-x-2">
+                            ${t.tipo === 'receita' ? `<button onclick="toggleRecorrenciaTransacao(${t.id})" class="${t.recorrente !== false ? 'text-amber-500 hover:text-amber-700' : 'text-slate-300 hover:text-amber-600'} cursor-pointer" title="${t.recorrente !== false ? 'Marcar como não recorrente (parar de projetar a partir daqui)' : 'Marcar como recorrente novamente'}"><i class="fa-solid fa-rotate"></i></button>` : ''}
                             ${t.tipo !== 'compensacao_fatura' ? `<button onclick="editarTransacao(${t.id})" class="text-slate-400 hover:text-indigo-600 cursor-pointer" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
                             <button onclick="excluirTransacao(${t.id})" class="text-slate-400 hover:text-rose-600 cursor-pointer" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                         </td>
@@ -1976,15 +2257,50 @@
             processarMenuParcelados();
             processarMenuProjecoes();
 
+            atualizarDashboard();
+        }
+
+        function atualizarDashboard() {
+            const mesAtualStr = document.getElementById('dashboard-mes').value;
+            if (!mesAtualStr) return;
+            const responsavelDashboard = document.getElementById('dashboard-responsavel').value;
+            const correspondeResponsavel = item => !responsavelDashboard || (item.responsavel || 'Geral') === responsavelDashboard;
+            let receitasProjetadas = 0;
+            let despesasProjetadas = 0;
+            (window.listaProjecoesCalculada || []).forEach(p => {
+                if (p.dataOrdenacao !== mesAtualStr || db.projecoesExcluidas?.[p.chaveCustom] || !correspondeResponsavel(p)) return;
+                if (p.tipo === 'receita') receitasProjetadas += Number(p.valorProjetado) || 0;
+                else if (p.tipo === 'despesa') despesasProjetadas += Number(p.valorProjetado) || 0;
+            });
+            document.getElementById('card-receitas-projetadas').innerText = formatarMoeda(receitasProjetadas);
+            document.getElementById('card-despesas-projetadas').innerText = formatarMoeda(despesasProjetadas);
+            const saldoProjetadoEl = document.getElementById('card-saldo-projetado');
+            const saldoProjetadoMes = receitasProjetadas - despesasProjetadas;
+            saldoProjetadoEl.innerText = formatarMoeda(saldoProjetadoMes);
+            saldoProjetadoEl.classList.toggle('text-rose-600', saldoProjetadoMes < 0);
+            saldoProjetadoEl.classList.toggle('text-slate-900', saldoProjetadoMes >= 0);
+            let totalReceitasPagasMes = 0;
+            let totalDespesasPagasMes = 0;
+            let totalDespesasFixasMes = 0;
+            let totalDespesasVariaveisMes = 0;
+            db.transacoes.forEach(t => {
+                if (!t.data || !t.data.startsWith(mesAtualStr) || t.status !== 'pago' || !correspondeResponsavel(t)) return;
+                if (t.tipo === 'receita') totalReceitasPagasMes += t.valor;
+                if (t.tipo === 'despesa') {
+                    totalDespesasPagasMes += t.valor;
+                    if (t.classificacao === 'fixa') totalDespesasFixasMes += t.valor;
+                    else totalDespesasVariaveisMes += t.valor;
+                }
+            });
             const bancoSaldos = {};
             let saldoGeralTotal = 0;
 
             db.bancos.forEach(b => {
-                bancoSaldos[b.nome] = b.saldoInicial;
+                if (b.tipoBanco !== 'credito' && b.nome.trim().toLocaleLowerCase('pt-BR') !== 'nubank') bancoSaldos[b.nome] = responsavelDashboard ? 0 : (Number(b.saldoInicial) || 0);
             });
 
             db.transacoes.forEach(t => {
-                if(t.status === 'pago' && bancoSaldos[t.banco] !== undefined) {
+                if(t.status === 'pago' && t.data && t.data.slice(0, 7) <= mesAtualStr && bancoSaldos[t.banco] !== undefined && correspondeResponsavel(t)) {
                     if(t.tipo === 'receita') {
                         bancoSaldos[t.banco] += t.valor;
                     } else if(t.tipo === 'despesa') {
@@ -2003,20 +2319,21 @@
 
             const gastosCartaoPorBanco = {};
             db.bancos.forEach(b => { 
-                if (b.tipoBanco !== 'debito') {
+                if (b.tipoBanco !== 'debito' || b.nome.trim().toLocaleLowerCase('pt-BR') === 'nubank') {
                     gastosCartaoPorBanco[b.nome] = 0; 
                 }
             });
 
             db.transacoes.forEach(t => {
-                if (t.pagamento === 'Cartão de Crédito' && t.data.startsWith(mesAtualStr)) {
-                    if (t.status !== 'pago' && gastosCartaoPorBanco[t.banco] !== undefined) {
+                if (t.pagamento === 'Cartão de Crédito' && t.data?.startsWith(mesAtualStr) && correspondeResponsavel(t)) {
+                    if (t.status !== 'pago' && t.status !== 'fatura_fechada' && gastosCartaoPorBanco[t.banco] !== undefined) {
                         gastosCartaoPorBanco[t.banco] += t.valor;
                     }
                 }
             });
 
             document.getElementById('card-saldo').innerText = formatarMoeda(saldoGeralTotal);
+            document.getElementById('dashboard-saldo-titulo').innerText = responsavelDashboard ? 'Movimentação Líquida (até o mês)' : 'Saldo Total (até o mês)';
             document.getElementById('card-receitas').innerText = formatarMoeda(totalReceitasPagasMes);
             document.getElementById('card-despesas').innerText = formatarMoeda(totalDespesasPagasMes);
 
@@ -2049,7 +2366,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
+                    cutout: '55%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, boxHeight: 12, padding: 12, font: { size: 11 } } } }
                 }
             });
 
@@ -2068,8 +2385,9 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    cutout: '55%',
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: { position: 'bottom', labels: { boxWidth: 12, boxHeight: 12, padding: 12, font: { size: 11 } } }
                     }
                 }
             });
@@ -2079,6 +2397,8 @@
 
         function processarMenuParcelados() {
             const agrupadas = {};
+            const bancoSelect = document.getElementById('parc-filtro-banco');
+            const bancoSelecionado = bancoSelect.value;
 
             db.transacoes.forEach(t => {
                 const match = t.descricao.match(/^(.*?)\s*\((\d+)\/(\d+)\)$/);
@@ -2094,31 +2414,49 @@
                             totalParcelas: totalParcelas,
                             valorParcela: t.valor,
                             pagas: 0,
+                            valorPago: 0,
                             vencer: 0
                         };
                     }
 
-                    if (t.status === 'pago') {
+                    // Fatura fechada representa a parcela quitada sem alterar o histórico da compra.
+                    if (t.status === 'pago' || (t.pagamento === 'Cartão de Crédito' && t.status === 'fatura_fechada')) {
                         agrupadas[chaveUnica].pagas++;
+                        agrupadas[chaveUnica].valorPago += t.valor;
                     }
                 }
             });
 
+            const bancos = [...new Set(Object.values(agrupadas).map(compra => compra.banco))].sort();
+            bancoSelect.innerHTML = '<option value="">Todos os bancos / cartões</option>' + bancos.map(banco => `<option value="${escapeHtml(banco)}">${escapeHtml(banco)}</option>`).join('');
+            bancoSelect.value = bancos.includes(bancoSelecionado) ? bancoSelecionado : '';
+            const busca = document.getElementById('parc-filtro-busca').value.toLocaleLowerCase('pt-BR').trim();
+            const situacao = document.getElementById('parc-filtro-situacao').value;
             const listaCompras = Object.values(agrupadas).map(compra => {
-                compra.vencer = compra.totalParcelas - compra.pagas;
+                compra.vencer = Math.max(0, compra.totalParcelas - compra.pagas);
                 return compra;
+            }).filter(compra => {
+                if (busca && !compra.descricao.toLocaleLowerCase('pt-BR').includes(busca)) return false;
+                if (bancoSelect.value && compra.banco !== bancoSelect.value) return false;
+                if (situacao === 'pendente' && compra.vencer === 0) return false;
+                if (situacao === 'quitada' && compra.vencer !== 0) return false;
+                return true;
             });
 
             let totalGeralPagas = 0;
             let totalGeralVencer = 0;
+            let totalValorPago = 0;
+            let totalValorRestante = 0;
 
             const tbodyParcelados = document.getElementById('tabela-parcelados-body');
 
             if (listaCompras.length === 0) {
-                tbodyParcelados.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400 italic">Nenhuma compra parcelada registrada.</td></tr>`;
+                tbodyParcelados.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 italic">Nenhuma compra parcelada encontrada.</td></tr>`;
                 document.getElementById('card-parc-total').innerText = '0';
                 document.getElementById('card-parc-pagas').innerText = '0';
                 document.getElementById('card-parc-vencer').innerText = '0';
+                document.getElementById('parc-valor-pago').innerText = formatarMoeda(0);
+                document.getElementById('parc-valor-restante').innerText = formatarMoeda(0);
                 return;
             }
 
@@ -2126,7 +2464,9 @@
                 totalGeralPagas += compra.pagas;
                 totalGeralVencer += compra.vencer;
                 const valorTotalCompra = compra.valorParcela * compra.totalParcelas;
-                const valorTotalVencer = compra.valorParcela * compra.vencer;
+                const valorTotalVencer = Math.max(0, valorTotalCompra - compra.valorPago);
+                totalValorPago += compra.valorPago;
+                totalValorRestante += valorTotalVencer;
 
                 return `
                     <tr class="hover:bg-slate-50">
@@ -2136,6 +2476,7 @@
                         <td class="p-3 md:p-4"><span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold">${compra.pagas} pagas</span></td>
                         <td class="p-3 md:p-4"><span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold">${compra.vencer} a vencer</span></td>
                         <td class="p-3 md:p-4 text-slate-700 font-semibold">${formatarMoeda(compra.valorParcela)}</td>
+                        <td class="p-3 md:p-4 text-emerald-700 font-bold">${formatarMoeda(compra.valorPago)}</td>
                         <td class="p-3 md:p-4 text-amber-600 font-bold">${formatarMoeda(valorTotalVencer)}</td>
                         <td class="p-3 md:p-4 text-indigo-600 font-bold">${formatarMoeda(valorTotalCompra)}</td>
                     </tr>
@@ -2145,6 +2486,8 @@
             document.getElementById('card-parc-total').innerText = listaCompras.length;
             document.getElementById('card-parc-pagas').innerText = totalGeralPagas;
             document.getElementById('card-parc-vencer').innerText = totalGeralVencer;
+            document.getElementById('parc-valor-pago').innerText = formatarMoeda(totalValorPago);
+            document.getElementById('parc-valor-restante').innerText = formatarMoeda(totalValorRestante);
         }
 
         function escapeHtml(str) {
@@ -2172,6 +2515,7 @@
             const filtroTipoProj = document.getElementById('proj-filtro-tipo').value;
             const filtroCategoriaProj = document.getElementById('proj-filtro-categoria').value;
             const filtroBancoProj = document.getElementById('proj-filtro-banco').value;
+            const filtroResponsavelProj = document.getElementById('proj-filtro-responsavel').value;
 
             const REGEX_PARCELA = /^(.*) \((\d+)\/(\d+)\)$/;
             const PERIODICIDADE_MESES = { mensal: 1, bimestral: 2, trimestral: 3, semestral: 6, anual: 12 };
@@ -2235,7 +2579,12 @@
                 const periodicidade = (db.projecoesPeriodicidade && db.projecoesPeriodicidade[item.idChave]) || 'mensal';
                 const intervaloMeses = PERIODICIDADE_MESES[periodicidade] || 1;
 
-                if (media3M > 0) {
+                // A recorrência é considerada ativa a menos que o lançamento MAIS RECENTE do grupo
+                // tenha sido marcado como "não recorrente" (ex.: último salário recebido antes de encerrar o vínculo).
+                const ultimaTx = item.transacoes.reduce((max, tx) => (!max || tx.data > max.data) ? tx : max, null);
+                const recorrenteAtiva = !ultimaTx || ultimaTx.recorrente !== false;
+
+                if (media3M > 0 && recorrenteAtiva) {
                     for (let m = 0; m < 12; m++) {
                         if (m % intervaloMeses !== 0) continue; // respeita a periodicidade escolhida
 
@@ -2260,6 +2609,7 @@
                             descricao: descricaoFinal,
                             origem: 'recorrente',
                             tipo: item.tipo,
+                            responsavel: ultimaTx?.responsavel || 'Geral',
                             categoria: item.categoria,
                             banco: item.banco,
                             valorBase: media3M,
@@ -2301,6 +2651,7 @@
                     descricao: descricaoFinal,
                     origem: 'parcelado',
                     tipo: 'despesa',
+                    responsavel: t.responsavel || 'Geral',
                     categoria: t.categoria || 'Geral',
                     banco: t.banco,
                     valorBase: t.valor,
@@ -2313,6 +2664,8 @@
 
             // Aplicar Ordenação CRESCENTE por mês de projeção (dataOrdenacao)
             listaProjecoesCalculada.sort((a, b) => a.dataOrdenacao.localeCompare(b.dataOrdenacao));
+            window.listaProjecoesCalculada = listaProjecoesCalculada;
+            atualizarTotaisProjetadosDashboard();
 
             // Aplicar Filtros de Projeção (mês, tipo, categoria, banco)
             const listaFiltrada = listaProjecoesCalculada.filter(p => {
@@ -2320,6 +2673,7 @@
                 if (filtroTipoProj && p.tipo !== filtroTipoProj) return false;
                 if (filtroCategoriaProj && p.categoria !== filtroCategoriaProj) return false;
                 if (filtroBancoProj && p.banco !== filtroBancoProj) return false;
+                if (filtroResponsavelProj && (p.responsavel || 'Geral') !== filtroResponsavelProj) return false;
                 return true;
             });
 
@@ -2392,6 +2746,7 @@
                 if (db.projecoesExcluidas[p.chaveCustom]) return false;
                 if (filtroCategoriaProj && p.categoria !== filtroCategoriaProj) return false;
                 if (filtroBancoProj && p.banco !== filtroBancoProj) return false;
+                if (filtroResponsavelProj && (p.responsavel || 'Geral') !== filtroResponsavelProj) return false;
                 return true;
             });
 
@@ -2411,6 +2766,16 @@
             });
             const dadosReceitas = chavesMeses.map(k => mesesMap[k].receita);
             const dadosDespesas = chavesMeses.map(k => mesesMap[k].despesa);
+
+            // Snapshot usado pelo PDF: linhas filtradas (sem as marcadas como excluídas), subtotais e dados do gráfico
+            window.ultimasProjecoesPdf = {
+                linhas: listaParaCalculo,
+                qtdExcluidas: listaFiltrada.length - listaParaCalculo.length,
+                subtotalReceitas: subtotalReceitas,
+                subtotalDespesas: subtotalDespesas,
+                saldo: saldoProjetado,
+                grafico: { labels: labelsGrafico, receitas: dadosReceitas, despesas: dadosDespesas }
+            };
 
             const ctxProjMensal = document.getElementById('chartProjecoesMensal').getContext('2d');
             if (myChartProjecoesMensal) myChartProjecoesMensal.destroy();
@@ -2432,6 +2797,10 @@
                     }
                 }
             });
+        }
+
+        function atualizarTotaisProjetadosDashboard() {
+            if (document.getElementById('dashboard-mes').value) atualizarDashboard();
         }
 
         function toggleExclusaoProjecao(chaveCustom, excluir) {
@@ -2589,6 +2958,9 @@
             document.getElementById('lc-div-parcelas').style.display = tipo === 'despesa' ? 'block' : 'none';
             if (tipo !== 'despesa') document.getElementById('lc-parcelas').value = '1';
 
+            // Recorrência só se aplica a receitas
+            document.getElementById('lc-div-recorrente').style.display = tipo === 'receita' ? 'block' : 'none';
+
             // Sugere dados a partir do último lançamento da categoria
             const ultima = db.transacoes
                 .filter(t => t.categoria === categoria && t.tipo === tipo && t.data)
@@ -2604,6 +2976,7 @@
                 if (db.pagamentos.includes(ultima.pagamento)) document.getElementById('lc-pagamento').value = ultima.pagamento;
                 if (db.responsaveis.includes(ultima.responsavel)) document.getElementById('lc-responsavel').value = ultima.responsavel;
             }
+            if (tipo === 'receita') document.getElementById('lc-recorrente').checked = ultima ? (ultima.recorrente !== false) : true;
             atualizarStatusLC();
             atualizarPreviewLC();
         }
@@ -2637,7 +3010,8 @@
                 responsavel: document.getElementById('lc-responsavel').value,
                 dataStr: document.getElementById('lc-data').value,
                 status: document.getElementById('lc-status').value,
-                parcelas: tipo === 'despesa' ? Math.max(1, parseInt(document.getElementById('lc-parcelas').value) || 1) : 1
+                parcelas: tipo === 'despesa' ? Math.max(1, parseInt(document.getElementById('lc-parcelas').value) || 1) : 1,
+                recorrente: tipo === 'receita' ? document.getElementById('lc-recorrente').checked : undefined
             });
             fecharModalLancamentoCategoria();
             saveData();
