@@ -268,6 +268,17 @@
                                 <div id="bank-balances-list" class="space-y-3"></div>
                             </div>
 
+                            <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100">
+                                <div class="flex items-start justify-between gap-2 mb-4">
+                                    <div>
+                                        <h3 class="text-sm md:text-base font-bold text-slate-800"><i class="fa-solid fa-hourglass-half mr-2 text-amber-500"></i>Despesas em Aberto (Mês)</h3>
+                                        <p id="open-expenses-qtd" class="text-xs text-slate-400 mt-0.5">0 despesas</p>
+                                    </div>
+                                    <span id="card-abertas-total" class="text-base md:text-lg font-bold text-amber-600 whitespace-nowrap">R$ 0,00</span>
+                                </div>
+                                <div id="open-expenses-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                            </div>
+
                             <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex-1">
                                 <h3 class="text-sm md:text-base font-bold text-slate-800 mb-4"><i class="fa-solid fa-credit-card mr-2 text-indigo-600"></i>Cartão de Crédito (Mês)</h3>
                                 <div id="card-spending-list" class="space-y-3"></div>
@@ -2292,6 +2303,25 @@
                     else totalDespesasVariaveisMes += t.valor;
                 }
             });
+            // Despesas em aberto (status "Em Aberto") do mês selecionado, da mais antiga para a mais recente
+            const despesasAbertasMes = db.transacoes
+                .filter(t => t.tipo === 'despesa' && t.status === 'aberto' && t.data && t.data.startsWith(mesAtualStr) && correspondeResponsavel(t))
+                .sort((a, b) => a.data.localeCompare(b.data));
+            const totalDespesasAbertasMes = despesasAbertasMes.reduce((acc, t) => acc + (Number(t.valor) || 0), 0);
+            document.getElementById('card-abertas-total').innerText = formatarMoeda(totalDespesasAbertasMes);
+            document.getElementById('open-expenses-qtd').innerText = `${despesasAbertasMes.length} ${despesasAbertasMes.length === 1 ? 'despesa' : 'despesas'}`;
+            document.getElementById('open-expenses-list').innerHTML = despesasAbertasMes.length === 0
+                ? '<p class="text-sm text-slate-400 italic text-center py-3">Nenhuma despesa em aberto neste mês.</p>'
+                : despesasAbertasMes.map(t => `
+                    <div class="flex justify-between items-center gap-3 p-3 bg-slate-50 rounded-xl text-sm">
+                        <div class="min-w-0">
+                            <p class="font-medium text-slate-700 truncate">${escapeHtml(t.descricao)}</p>
+                            <p class="text-xs text-slate-400 truncate">${t.data.slice(8, 10)}/${t.data.slice(5, 7)} · ${escapeHtml(t.banco || '')}</p>
+                        </div>
+                        <span class="font-bold text-amber-600 whitespace-nowrap">${formatarMoeda(Number(t.valor) || 0)}</span>
+                    </div>
+                `).join('');
+
             const bancoSaldos = {};
             let saldoGeralTotal = 0;
 
