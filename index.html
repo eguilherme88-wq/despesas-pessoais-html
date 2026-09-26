@@ -211,14 +211,14 @@
                         </div>
                         <div role="button" tabindex="0" title="Clique para ver as receitas pagas" onclick="abrirDetalheDashboard('receita-paga')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDetalheDashboard('receita-paga')}" class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-emerald-200 transition focus:outline-none focus:ring-2 focus:ring-emerald-500">
                             <div>
-                                <p class="text-xs md:text-sm font-medium text-slate-500">Receitas Pagas (Mês)</p>
+                                <p class="text-xs md:text-sm font-medium text-slate-500">Movimentação Pagas (Mês)</p>
                                 <h3 id="card-receitas" class="text-xl md:text-2xl font-bold text-emerald-600 mt-1">R$ 0,00</h3>
                             </div>
                             <div class="bg-emerald-50 text-emerald-600 p-3 rounded-xl"><i class="fa-solid fa-arrow-trend-up text-lg md:text-xl"></i></div>
                         </div>
                         <div role="button" tabindex="0" title="Clique para ver as despesas pagas" onclick="abrirDetalheDashboard('despesa-paga')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDetalheDashboard('despesa-paga')}" class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-rose-200 transition focus:outline-none focus:ring-2 focus:ring-rose-500">
                             <div>
-                                <p class="text-xs md:text-sm font-medium text-slate-500">Despesas Pagas (Mês)</p>
+                                <p class="text-xs md:text-sm font-medium text-slate-500">Movimentação Pagas (Mês)</p>
                                 <h3 id="card-despesas" class="text-xl md:text-2xl font-bold text-rose-600 mt-1">R$ 0,00</h3>
                             </div>
                             <div class="bg-rose-50 text-rose-600 p-3 rounded-xl"><i class="fa-solid fa-arrow-trend-down text-lg md:text-xl"></i></div>
@@ -405,7 +405,7 @@
                             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-500 mb-1">Filtrar por Mês</label>
-                                    <input type="month" id="filtro-mes" onchange="initApp()" class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none bg-white">
+                                    <select id="filtro-mes" multiple onchange="initApp()" class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none bg-white"><option value="">Todos os Meses</option></select>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-500 mb-1">Filtrar por Banco</label>
@@ -545,9 +545,16 @@
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div>
                                 <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-chart-line mr-2 text-emerald-600"></i>Projeções de Receitas e Despesas</h3>
-                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos últimos 3 meses. Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções. Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
+                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos últimos 3 meses. Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções. Compras no cartão de crédito Nubank entram no mês seguinte ao da compra (mês de vencimento da fatura): as compras do mês atual aparecem na projeção do próximo mês. Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
+                                <button type="button" onclick="excluirProjecoesSelecionadas()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
+                                    <i class="fa-solid fa-trash"></i> Excluir Selecionadas
+                                    <span id="proj-contador-selecionadas" class="hidden bg-white/25 rounded-full px-1.5 min-w-[1.25rem] text-center">0</span>
+                                </button>
+                                <button type="button" id="btn-restaurar-projecoes" onclick="restaurarProjecoesExcluidas()" class="hidden bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition items-center gap-1.5 cursor-pointer whitespace-nowrap" title="Trazer de volta as linhas excluídas das projeções">
+                                    <i class="fa-solid fa-rotate-left"></i> Restaurar Excluídas <span id="proj-contador-removidas">0</span>
+                                </button>
                                 <button type="button" onclick="gerarPDFProjecoes()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
                                     <i class="fa-solid fa-file-pdf"></i> Gerar PDF
                                 </button>
@@ -561,7 +568,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-500 mb-1">Filtrar por Mês (Projeção)</label>
-                                <input type="month" id="proj-filtro-mes" onchange="processarMenuProjecoes()" class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none bg-white">
+                                <select id="proj-filtro-mes" multiple onchange="processarMenuProjecoes()" class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none bg-white"><option value="">Todos os Meses</option></select>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-500 mb-1">Filtrar por Tipo</label>
@@ -626,7 +633,7 @@
                             <table class="w-full text-left border-collapse text-sm whitespace-nowrap">
                                 <thead>
                                     <tr class="bg-slate-50 text-slate-500 border-b border-slate-100">
-                                        <th class="p-3 md:p-4 font-semibold text-center">Excluir</th>
+                                        <th class="p-3 md:p-4 font-semibold text-center"><input type="checkbox" id="proj-selecionar-todas" onchange="toggleSelecionarTodasProjecoes(this)" class="w-4 h-4 accent-rose-600 cursor-pointer align-middle" title="Selecionar todas as linhas filtradas" aria-label="Selecionar todas as linhas filtradas"></th>
                                         <th class="p-3 md:p-4 font-semibold">Mês de Projeção</th>
                                         <th class="p-3 md:p-4 font-semibold">Descrição</th>
                                         <th class="p-3 md:p-4 font-semibold">Origem</th>
@@ -641,7 +648,7 @@
                                 <tbody id="tabela-projecoes-body" class="divide-y divide-slate-100"></tbody>
                                 <tfoot>
                                     <tr class="bg-slate-50 font-bold text-slate-700 border-t-2 border-slate-200">
-                                        <td class="p-3 md:p-4" colspan="8">Subtotal (linhas filtradas, exceto excluídas)</td>
+                                        <td class="p-3 md:p-4" colspan="8">Subtotal (linhas filtradas, exceto as ignoradas nos totais)</td>
                                         <td class="p-3 md:p-4" id="proj-subtotal-tabela">R$ 0,00</td>
                                         <td class="p-3 md:p-4"></td>
                                     </tr>
@@ -786,6 +793,21 @@
                 <input type="number" step="0.01" min="0" id="modal-proj-valor" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
 
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1" for="modal-proj-banco">Banco</label>
+                    <select id="modal-proj-banco" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none bg-white focus:ring-2 focus:ring-indigo-500"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1" for="modal-proj-responsavel">Responsável</label>
+                    <select id="modal-proj-responsavel" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none bg-white focus:ring-2 focus:ring-indigo-500"></select>
+                </div>
+                <label id="modal-proj-div-todos-meses" class="col-span-2 flex items-start gap-2 text-xs text-slate-600 cursor-pointer">
+                    <input type="checkbox" id="modal-proj-todos-meses" class="w-4 h-4 mt-0.5 accent-indigo-600 cursor-pointer">
+                    <span>Aplicar banco e responsável em todos os meses deste item recorrente</span>
+                </label>
+            </div>
+
             <div id="modal-proj-div-periodicidade">
                 <label class="block text-xs font-semibold text-slate-500 mb-1">Periodicidade (item recorrente)</label>
                 <select id="modal-proj-periodicidade" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none bg-white">
@@ -841,6 +863,7 @@
                         <option value="">Todas</option>
                         <option value="recorrente">Recorrente</option>
                         <option value="parcelado">Parcelado</option>
+                        <option value="fatura">Fatura (cartão)</option>
                     </select>
                 </div>
                 <div class="col-span-2 md:col-span-6 flex justify-end">
@@ -1028,7 +1051,10 @@
             transacoes: [],
             projecoesEditadas: {}, // Armazena valores customizados de projeções { "YYYY-MM_chave": valor }
             projecoesDescricoesEditadas: {}, // Armazena descrições customizadas de projeções { "YYYY-MM_chave": descricao }
-            projecoesExcluidas: {}, // Marca projeções (por chave) que o usuário optou por excluir dos totais { "chave": true }
+            projecoesExcluidas: {}, // Marca projeções (por chave) que o usuário optou por ignorar nos totais { "chave": true }
+            projecoesRemovidas: {}, // Projeções (por chave) excluídas pelo usuário: deixam de aparecer { "chave": true }
+            projecoesBancosEditados: {}, // Banco alterado na projeção { "chave": banco } ou { "*_idChave": banco } para todos os meses
+            projecoesResponsaveisEditados: {}, // Responsável alterado na projeção (mesmas chaves do banco)
             projecoesPeriodicidade: {} // Periodicidade de cada item recorrente { "idChave": "mensal|bimestral|trimestral|semestral|anual" }
         };
 
@@ -1056,7 +1082,10 @@
             if (!db.projecoesEditadas) db.projecoesEditadas = {};
             if (!db.projecoesDescricoesEditadas) db.projecoesDescricoesEditadas = {};
             if (!db.projecoesExcluidas) db.projecoesExcluidas = {};
+            if (!db.projecoesRemovidas) db.projecoesRemovidas = {};
             if (!db.projecoesPeriodicidade) db.projecoesPeriodicidade = {};
+            if (!db.projecoesBancosEditados) db.projecoesBancosEditados = {};
+            if (!db.projecoesResponsaveisEditados) db.projecoesResponsaveisEditados = {};
 
             db.bancos = db.bancos.map(b => {
                 if (typeof b === 'string') return { nome: b, saldoInicial: 0, tipoBanco: 'ambos' };
@@ -1092,7 +1121,7 @@
                 throw new Error('Há lançamentos inválidos no backup.');
             }
             if (dados.bancos.some(b => !b || typeof b !== 'object' || typeof b.nome !== 'string')) throw new Error('Há bancos inválidos no backup.');
-            const mapas = ['projecoesEditadas', 'projecoesDescricoesEditadas', 'projecoesExcluidas', 'projecoesPeriodicidade'];
+            const mapas = ['projecoesEditadas', 'projecoesDescricoesEditadas', 'projecoesExcluidas', 'projecoesRemovidas', 'projecoesPeriodicidade', 'projecoesBancosEditados', 'projecoesResponsaveisEditados'];
             if (mapas.some(campo => dados[campo] !== undefined && (!dados[campo] || typeof dados[campo] !== 'object' || Array.isArray(dados[campo])))) {
                 throw new Error('As configurações de projeções estão inválidas.');
             }
@@ -1215,20 +1244,253 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // =====================================================================
+        // Filtros com caixas de seleção (vários itens por filtro)
+        // Cada <select> de filtro fica oculto e é substituído por um botão que abre
+        // uma lista com caixas. Nenhuma caixa marcada = todos os itens.
+        // =====================================================================
+        const _multiFiltros = {};
+        const MULTI_FILTROS_IDS = [
+            'filtro-mes', 'filtro-banco', 'filtro-responsavel', 'filtro-tipo', 'filtro-categoria', 'filtro-status',
+            'proj-filtro-mes', 'proj-filtro-tipo', 'proj-filtro-categoria', 'proj-filtro-banco', 'proj-filtro-responsavel',
+            'parc-filtro-banco', 'parc-filtro-situacao',
+            'dashboard-responsavel',
+            'dd-categoria', 'dd-banco', 'dd-responsavel', 'dd-origem'
+        ];
+
+        function lerFiltro(id) {
+            const mf = _multiFiltros[id];
+            if (mf) return Array.from(mf.selecionados);
+            const el = document.getElementById(id);
+            return el && el.value ? [el.value] : [];
+        }
+
+        function definirFiltro(id, valores) {
+            const mf = _multiFiltros[id];
+            if (!mf) { const el = document.getElementById(id); if (el) el.value = (valores && valores[0]) || ''; return; }
+            mf.selecionados = new Set((valores || []).filter(v => v !== '' && v !== null && v !== undefined));
+            mf.render();
+        }
+
+        function limparFiltro(id) { definirFiltro(id, []); }
+
+        function rotuloMesAno(anoMes) {
+            if (!anoMes) return '';
+            const txt = new Date(anoMes + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            return txt.charAt(0).toUpperCase() + txt.slice(1);
+        }
+
+        function preencherOpcoesMes(id, meses, rotuloTodos, ordemDesc) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const lista = [...new Set(meses.filter(Boolean))].sort();
+            if (ordemDesc) lista.reverse();
+            const html = `<option value="">${rotuloTodos}</option>` + lista.map(m => `<option value="${m}">${rotuloMesAno(m)}</option>`).join('');
+            if (el.innerHTML !== html) el.innerHTML = html;
+        }
+
+        function criarMultiFiltro(select) {
+            const id = select.id;
+            select.multiple = true;
+            select.classList.add('hidden');
+            select.setAttribute('aria-hidden', 'true');
+            select.tabIndex = -1;
+
+            const botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = select.className.replace(/\bhidden\b/g, '') + ' flex items-center justify-between gap-2 text-left cursor-pointer ' + (/\bw-full\b/.test(select.className) ? 'min-w-0' : 'min-w-[11rem]');
+            botao.setAttribute('aria-haspopup', 'listbox');
+            botao.setAttribute('aria-expanded', 'false');
+            if (select.getAttribute('aria-label')) botao.setAttribute('aria-label', select.getAttribute('aria-label'));
+            const rotulo = document.querySelector(`label[for="${id}"]`);
+            if (rotulo) { botao.id = id + '-botao'; rotulo.setAttribute('for', botao.id); }
+            select.insertAdjacentElement('afterend', botao);
+
+            const painel = document.createElement('div');
+            painel.className = 'hidden fixed z-[60] bg-white border border-slate-200 rounded-xl shadow-lg text-sm flex-col overflow-hidden';
+            painel.setAttribute('role', 'listbox');
+            painel.setAttribute('aria-multiselectable', 'true');
+            document.body.appendChild(painel);
+
+            const mf = { id, select, botao, painel, selecionados: new Set(), busca: '' };
+            _multiFiltros[id] = mf;
+
+            const opcoes = () => Array.from(select.options).filter(o => o.value !== '');
+            const textoTodos = () => { const o = Array.from(select.options).find(o => o.value === ''); return o ? o.text : 'Todos'; };
+
+            function disparar() {
+                Array.from(select.options).forEach(o => { o.selected = mf.selecionados.has(o.value); });
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            function renderBotao() {
+                const marcadas = opcoes().filter(o => mf.selecionados.has(o.value));
+                let texto;
+                if (marcadas.length === 0) texto = textoTodos();
+                else if (marcadas.length === 1) texto = marcadas[0].text;
+                else texto = `${marcadas.length} selecionados`;
+                botao.innerHTML = `<span class="truncate ${marcadas.length ? 'text-slate-800 font-medium' : ''}">${escapeHtml(texto)}</span>` +
+                    `<span class="flex items-center gap-1 flex-shrink-0">${marcadas.length ? `<span class="bg-emerald-600 text-white rounded-full text-[10px] font-bold px-1.5 leading-4">${marcadas.length}</span>` : ''}<i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i></span>`;
+                botao.title = marcadas.length ? marcadas.map(o => o.text).join(', ') : textoTodos();
+            }
+
+            function renderPainel() {
+                const todas = opcoes();
+                const termo = mf.busca.toLocaleLowerCase('pt-BR');
+                const visiveis = termo ? todas.filter(o => o.text.toLocaleLowerCase('pt-BR').includes(termo)) : todas;
+                const comBusca = todas.length > 7;
+                painel.innerHTML = `
+                    ${comBusca ? `<div class="p-2 border-b border-slate-100"><input type="search" data-mf-busca placeholder="Procurar..." value="${escapeHtml(mf.busca)}" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"></div>` : ''}
+                    <div class="flex justify-between gap-2 px-3 py-2 border-b border-slate-100 text-xs font-semibold">
+                        <button type="button" data-mf-acao="todos" class="text-emerald-700 hover:underline cursor-pointer whitespace-nowrap">Marcar todos</button>
+                        <button type="button" data-mf-acao="nenhum" class="text-slate-500 hover:underline cursor-pointer whitespace-nowrap">Limpar seleção</button>
+                    </div>
+                    <div class="overflow-y-auto py-1" style="max-height: 16rem">
+                        ${visiveis.length === 0 ? `<p class="px-3 py-3 text-xs text-slate-400 italic">Nenhum item.</p>` : visiveis.map(o => `
+                            <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer" role="option" aria-selected="${mf.selecionados.has(o.value)}">
+                                <input type="checkbox" data-mf-valor="${escapeHtml(o.value)}" ${mf.selecionados.has(o.value) ? 'checked' : ''} class="w-4 h-4 accent-emerald-600 cursor-pointer flex-shrink-0">
+                                <span class="truncate text-slate-700">${escapeHtml(o.text)}</span>
+                            </label>`).join('')}
+                    </div>`;
+            }
+
+            function posicionar() {
+                const r = botao.getBoundingClientRect();
+                const largura = Math.max(r.width, 220);
+                const esquerda = Math.min(Math.max(8, r.left), window.innerWidth - largura - 8);
+                painel.style.width = largura + 'px';
+                painel.style.left = esquerda + 'px';
+                const espacoAbaixo = window.innerHeight - r.bottom;
+                if (espacoAbaixo < 260 && r.top > espacoAbaixo) {
+                    painel.style.top = '';
+                    painel.style.bottom = (window.innerHeight - r.top + 4) + 'px';
+                } else {
+                    painel.style.bottom = '';
+                    painel.style.top = (r.bottom + 4) + 'px';
+                }
+            }
+
+            mf.aberto = false;
+            mf.abrir = () => {
+                Object.values(_multiFiltros).forEach(o => { if (o !== mf) o.fechar(); });
+                mf.busca = '';
+                renderPainel();
+                painel.classList.remove('hidden');
+                painel.classList.add('flex');
+                posicionar();
+                mf.aberto = true;
+                botao.setAttribute('aria-expanded', 'true');
+                const primeiro = painel.querySelector('[data-mf-busca]') || painel.querySelector('input[type="checkbox"]');
+                if (primeiro) primeiro.focus();
+            };
+            mf.fechar = () => {
+                if (!mf.aberto) return;
+                painel.classList.add('hidden');
+                painel.classList.remove('flex');
+                mf.aberto = false;
+                botao.setAttribute('aria-expanded', 'false');
+            };
+            mf.posicionar = posicionar;
+            mf.render = () => { renderBotao(); if (mf.aberto) renderPainel(); };
+
+            botao.addEventListener('click', () => mf.aberto ? mf.fechar() : mf.abrir());
+            painel.addEventListener('change', (e) => {
+                const cb = e.target.closest('input[data-mf-valor]');
+                if (!cb) return;
+                if (cb.checked) mf.selecionados.add(cb.dataset.mfValor); else mf.selecionados.delete(cb.dataset.mfValor);
+                cb.closest('label').setAttribute('aria-selected', cb.checked);
+                renderBotao();
+                disparar();
+            });
+            painel.addEventListener('click', (e) => {
+                const acao = e.target.closest('[data-mf-acao]');
+                if (!acao) return;
+                const termo = mf.busca.toLocaleLowerCase('pt-BR');
+                const alvo = opcoes().filter(o => !termo || o.text.toLocaleLowerCase('pt-BR').includes(termo));
+                if (acao.dataset.mfAcao === 'todos') alvo.forEach(o => mf.selecionados.add(o.value));
+                else if (termo) alvo.forEach(o => mf.selecionados.delete(o.value));
+                else mf.selecionados.clear();
+                renderPainel();
+                renderBotao();
+                disparar();
+            });
+            painel.addEventListener('input', (e) => {
+                if (!e.target.matches('[data-mf-busca]')) return;
+                mf.busca = e.target.value;
+                const pos = e.target.selectionStart;
+                renderPainel();
+                const campo = painel.querySelector('[data-mf-busca]');
+                campo.focus();
+                campo.setSelectionRange(pos, pos);
+            });
+            painel.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') { e.stopPropagation(); mf.fechar(); botao.focus(); }
+            });
+
+            // As opções são recriadas pelo sistema (ex.: novos bancos/categorias). Mantém as marcações que ainda existem.
+            new MutationObserver(() => {
+                const existentes = new Set(opcoes().map(o => o.value));
+                let removeu = false;
+                mf.selecionados.forEach(v => { if (!existentes.has(v)) { mf.selecionados.delete(v); removeu = true; } });
+                Array.from(select.options).forEach(o => { o.selected = mf.selecionados.has(o.value); });
+                mf.render();
+                if (removeu) select.dispatchEvent(new Event('change', { bubbles: true }));
+            }).observe(select, { childList: true });
+
+            renderBotao();
+        }
+
+        function iniciarMultiFiltros() {
+            MULTI_FILTROS_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.tagName === 'SELECT' && !_multiFiltros[id]) criarMultiFiltro(el);
+            });
+            document.addEventListener('mousedown', (e) => {
+                Object.values(_multiFiltros).forEach(mf => {
+                    if (mf.aberto && !mf.painel.contains(e.target) && !mf.botao.contains(e.target)) mf.fechar();
+                });
+            });
+            const reposicionar = (e) => Object.values(_multiFiltros).forEach(mf => {
+                if (!mf.aberto) return;
+                if (e && e.type === 'scroll' && mf.painel.contains(e.target)) return;
+                mf.posicionar();
+            });
+            window.addEventListener('scroll', reposicionar, true);
+            window.addEventListener('resize', reposicionar);
+        }
+
+        iniciarMultiFiltros();
+
         document.getElementById('current-date').innerText = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         document.getElementById('tx-data').valueAsDate = new Date();
         document.getElementById('fatura-mes').value = new Date().toISOString().slice(0, 7);
         document.getElementById('dashboard-mes').value = new Date().toLocaleDateString('sv-SE').slice(0, 7);
 
         function limparFiltros() {
-            document.getElementById('filtro-mes').value = '';
-            document.getElementById('filtro-banco').value = '';
-            document.getElementById('filtro-responsavel').value = '';
-            document.getElementById('filtro-tipo').value = '';
-            document.getElementById('filtro-status').value = '';
-            document.getElementById('filtro-categoria').value = '';
+            ['filtro-mes', 'filtro-banco', 'filtro-responsavel', 'filtro-tipo', 'filtro-status', 'filtro-categoria'].forEach(limparFiltro);
             document.getElementById('filtro-busca').value = '';
             initApp();
+        }
+
+        // Saldo acumulado das contas (mesma regra do card "Saldo Total (até o mês)" do dashboard):
+        // saldo inicial + lançamentos pagos até o mês, só contas-corrente (sem crédito e sem Nubank).
+        function calcularSaldoContasAte(ateMes, responsaveis = [], bancosFiltro = []) {
+            let total = 0;
+            const contas = new Set();
+            db.bancos.forEach(b => {
+                if (b.tipoBanco === 'credito' || b.nome.trim().toLocaleLowerCase('pt-BR') === 'nubank') return;
+                if (bancosFiltro.length && !bancosFiltro.includes(b.nome)) return;
+                contas.add(b.nome);
+                if (!responsaveis.length) total += Number(b.saldoInicial) || 0;
+            });
+            db.transacoes.forEach(t => {
+                if (t.status !== 'pago' || !t.data || t.data.slice(0, 7) > ateMes || !contas.has(t.banco)) return;
+                if (responsaveis.length && !responsaveis.includes(t.responsavel || 'Geral')) return;
+                if (t.tipo === 'receita') total += t.valor;
+                else if (t.tipo === 'despesa') total -= t.valor;
+                else if (t.tipo === 'compensacao_fatura') total += t.pagamento === 'Compensação' ? t.valor : -t.valor;
+            });
+            return total;
         }
 
         function gerarPDFTransacoes() {
@@ -1247,28 +1509,26 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
-            const fMes = document.getElementById('filtro-mes').value;
-            const fBanco = document.getElementById('filtro-banco').value;
-            const fResp = document.getElementById('filtro-responsavel').value;
-            const fTipo = document.getElementById('filtro-tipo').value;
-            const fStatus = document.getElementById('filtro-status').value;
-            const fCat = document.getElementById('filtro-categoria').value;
+            const fMes = lerFiltro('filtro-mes');
+            const fBanco = lerFiltro('filtro-banco');
+            const fResp = lerFiltro('filtro-responsavel');
+            const fTipo = lerFiltro('filtro-tipo');
+            const fStatus = lerFiltro('filtro-status');
+            const fCat = lerFiltro('filtro-categoria');
             const fBusca = document.getElementById('filtro-busca').value;
 
             const statusLabelsMap = { pago: 'Pago', aberto: 'Em Aberto', fatura_aberta: 'Fatura Aberta', fatura_fechada: 'Fatura Fechada' };
             const tipoLabelsMap = { receita: 'Receita', despesa: 'Despesa', compensacao_fatura: 'Compensação' };
             const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+            const mesTexto = m => { const [ano, mes] = m.split('-'); return `${nomesMeses[parseInt(mes, 10) - 1]}/${ano}`; };
             const filtrosAtivos = [];
-            if (fMes) {
-                const [ano, mes] = fMes.split('-');
-                filtrosAtivos.push(`Mês: ${nomesMeses[parseInt(mes, 10) - 1]}/${ano}`);
-            }
-            if (fBanco) filtrosAtivos.push(`Banco: ${fBanco}`);
-            if (fResp) filtrosAtivos.push(`Responsável: ${fResp}`);
-            if (fTipo) filtrosAtivos.push(`Tipo: ${tipoLabelsMap[fTipo] || fTipo}`);
-            if (fCat) filtrosAtivos.push(`Categoria: ${fCat}`);
-            if (fStatus) filtrosAtivos.push(`Status: ${statusLabelsMap[fStatus] || fStatus}`);
+            if (fMes.length) filtrosAtivos.push(`Mês: ${fMes.sort().map(mesTexto).join(', ')}`);
+            if (fBanco.length) filtrosAtivos.push(`Banco: ${fBanco.join(', ')}`);
+            if (fResp.length) filtrosAtivos.push(`Responsável: ${fResp.join(', ')}`);
+            if (fTipo.length) filtrosAtivos.push(`Tipo: ${fTipo.map(v => tipoLabelsMap[v] || v).join(', ')}`);
+            if (fCat.length) filtrosAtivos.push(`Categoria: ${fCat.join(', ')}`);
+            if (fStatus.length) filtrosAtivos.push(`Status: ${fStatus.map(v => statusLabelsMap[v] || v).join(', ')}`);
             if (fBusca) filtrosAtivos.push(`Busca: "${fBusca}"`);
 
             doc.setFontSize(16);
@@ -1279,16 +1539,20 @@
             doc.setTextColor(100, 116, 139);
             const agora = new Date();
             doc.text(`Gerado em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR')}`, 40, 56);
-            doc.text(
-                filtrosAtivos.length ? `Filtros aplicados: ${filtrosAtivos.join('  |  ')}` : 'Filtros aplicados: nenhum (todas as transações)',
-                40, 70
-            );
+            const linhasFiltrosTx = doc.splitTextToSize(filtrosAtivos.length ? `Filtros aplicados: ${filtrosAtivos.join('  |  ')}` : 'Filtros aplicados: nenhum (todas as transações)', doc.internal.pageSize.getWidth() - 80);
+            doc.text(linhasFiltrosTx, 40, 70);
+            const inicioTabelaTx = 84 + (linhasFiltrosTx.length - 1) * 11;
 
             let totalReceitas = 0;
             let totalDespesas = 0;
 
-            const linhas = [...lista].sort((a, b) => new Date(b.data) - new Date(a.data)).map(t => {
-                if (t.tipo === 'receita' || (t.tipo === 'compensacao_fatura' && t.pagamento === 'Compensação')) {
+            const VERDE = [4, 120, 87], VERMELHO = [190, 18, 60], AMARELO_FORTE = [202, 138, 4];
+            const ordenadas = [...lista].sort((a, b) => new Date(b.data) - new Date(a.data));
+            // Para cada linha: é entrada (verde) ou saída (vermelho)? Mesma regra dos totais da tela.
+            const ehEntrada = ordenadas.map(t => t.tipo === 'receita' || (t.tipo === 'compensacao_fatura' && t.pagamento === 'Compensação'));
+
+            const linhas = ordenadas.map((t, i) => {
+                if (ehEntrada[i]) {
                     totalReceitas += t.valor;
                 } else if (t.tipo === 'despesa' || (t.tipo === 'compensacao_fatura' && t.pagamento !== 'Compensação')) {
                     totalDespesas += t.valor;
@@ -1305,33 +1569,116 @@
                 ];
             });
 
+            const saldo = totalReceitas - totalDespesas;
+
+            // ---- Painel no topo: Receitas, Despesas e Saldo (filtrado), como na tela ----
+            const larguraUtilTx = doc.internal.pageSize.getWidth() - 80;
+            const gapCard = 12;
+            const larguraCard = (larguraUtilTx - gapCard * 2) / 3;
+            const alturaCard = 44;
+            const yCards = inicioTabelaTx - 6;
+            [
+                { titulo: 'Receitas (Filtrado)', valor: totalReceitas, fundo: [236, 253, 245], borda: [167, 243, 208], cor: VERDE },
+                { titulo: 'Despesas (Filtrado)', valor: totalDespesas, fundo: [255, 241, 242], borda: [254, 205, 211], cor: VERMELHO },
+                { titulo: 'Saldo (Filtrado)', valor: saldo, fundo: [248, 250, 252], borda: [226, 232, 240], cor: saldo >= 0 ? [30, 41, 59] : VERMELHO }
+            ].forEach((c, i) => {
+                const x = 40 + i * (larguraCard + gapCard);
+                doc.setFillColor(...c.fundo);
+                doc.setDrawColor(...c.borda);
+                doc.roundedRect(x, yCards, larguraCard, alturaCard, 6, 6, 'FD');
+                doc.setFontSize(8.5);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(...(i === 2 ? [100, 116, 139] : c.cor));
+                doc.text(c.titulo, x + 12, yCards + 16);
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(...c.cor);
+                doc.text(formatarMoeda(c.valor), x + 12, yCards + 35);
+            });
+            doc.setFont(undefined, 'normal');
+
+            // ---- Conciliação com o Saldo Total do dashboard (quando há filtro de mês) ----
+            let inicioTabela = yCards + alturaCard + 16;
+            if (fMes.length) {
+                const mesesOrd = [...fMes].sort();
+                const primeiroMes = mesesOrd[0];
+                const ultimoMes = mesesOrd[mesesOrd.length - 1];
+                const saldoAnterior = calcularSaldoContasAte(somarMeses(primeiroMes, -1), fResp, fBanco);
+                const saldoAcumulado = calcularSaldoContasAte(ultimoMes, fResp, fBanco);
+                const ajuste = saldoAcumulado - saldoAnterior - saldo; // o que o relatório conta e o saldo das contas não (ou vice-versa)
+                const temAjuste = Math.abs(ajuste) >= 0.005;
+                const rotuloPeriodo = mesesOrd.length === 1 ? 'Resultado do mês' : 'Resultado do período';
+                const rotuloAcumulado = `Saldo acumulado até ${mesTexto(ultimoMes)}`;
+
+                const partes = [
+                    { rotulo: `Saldo anterior (até ${mesTexto(somarMeses(primeiroMes, -1))})`, valor: saldoAnterior, sinal: '' },
+                    { rotulo: rotuloPeriodo, valor: saldo, sinal: saldo < 0 ? '−' : '+' },
+                ];
+                if (temAjuste) partes.push({ rotulo: 'Ajuste (Nubank/cartão, não pagos ou filtros)', valor: ajuste, sinal: ajuste < 0 ? '−' : '+' });
+                partes.push({ rotulo: rotuloAcumulado, valor: saldoAcumulado, sinal: '=', destaque: true });
+
+                const alturaConc = 46;
+                const yConc = inicioTabela - 4;
+                doc.setFillColor(248, 250, 252);
+                doc.setDrawColor(226, 232, 240);
+                doc.roundedRect(40, yConc, larguraUtilTx, alturaConc, 6, 6, 'FD');
+                doc.setFontSize(8);
+                doc.setTextColor(100, 116, 139);
+                doc.setFont(undefined, 'bold');
+                doc.text('Conciliação com o Saldo Total do Dashboard', 52, yConc + 13);
+                doc.setFont(undefined, 'normal');
+
+                const larguraParte = (larguraUtilTx - 24) / partes.length;
+                partes.forEach((pt, i) => {
+                    const x = 52 + i * larguraParte;
+                    const valorExibido = pt.sinal === '−' ? Math.abs(pt.valor) : pt.valor;
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(pt.rotulo, x + (pt.sinal ? 12 : 0), yConc + 26);
+                    if (pt.sinal) {
+                        doc.setFontSize(11);
+                        doc.setTextColor(148, 163, 184);
+                        doc.setFont(undefined, 'bold');
+                        doc.text(pt.sinal, x, yConc + 39);
+                    }
+                    doc.setFontSize(pt.destaque ? 11 : 10);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(...(pt.valor < 0 && pt.sinal !== '−' ? VERMELHO : (pt.destaque ? [30, 41, 59] : [71, 85, 105])));
+                    doc.text(formatarMoeda(valorExibido), x + (pt.sinal ? 12 : 0), yConc + 39);
+                    doc.setFont(undefined, 'normal');
+                });
+                inicioTabela = yConc + alturaConc + 14;
+            }
+
             doc.autoTable({
                 head: [['Data', 'Descrição', 'Tipo', 'Categoria', 'Responsável', 'Banco', 'Status', 'Valor']],
                 body: linhas,
-                startY: 84,
+                startY: inicioTabela,
                 styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
                 headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
                 columnStyles: { 7: { halign: 'right', fontStyle: 'bold' } },
-                margin: { left: 40, right: 40 }
+                margin: { left: 40, right: 40 },
+                didParseCell: (data) => {
+                    if (data.section === 'head' && data.column.index === 7) data.cell.styles.halign = 'right';
+                    if (data.section !== 'body') return;
+                    const t = ordenadas[data.row.index];
+                    // Tipo e Valor: receita em verde, despesa em vermelho
+                    if (data.column.index === 2 || data.column.index === 7) {
+                        data.cell.styles.textColor = ehEntrada[data.row.index] ? VERDE : VERMELHO;
+                    }
+                    // Status "Em Aberto" em amarelo forte
+                    if (data.column.index === 6 && t.status === 'aberto') {
+                        data.cell.styles.textColor = AMARELO_FORTE;
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
             });
 
-            const saldo = totalReceitas - totalDespesas;
-            const finalY = doc.lastAutoTable.finalY + 24;
-
-            doc.setFontSize(10);
-            doc.setTextColor(30, 41, 59);
+            const finalY = doc.lastAutoTable.finalY + 20;
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
             doc.text(`Total de transações: ${linhas.length}`, 40, finalY);
-
-            doc.setTextColor(5, 150, 105);
-            doc.text(`Receitas: ${formatarMoeda(totalReceitas)}`, 40, finalY + 16);
-
-            doc.setTextColor(225, 29, 72);
-            doc.text(`Despesas: ${formatarMoeda(totalDespesas)}`, 40, finalY + 32);
-
-            doc.setTextColor(...(saldo >= 0 ? [15, 23, 42] : [225, 29, 72]));
-            doc.setFontSize(11);
-            doc.text(`Saldo: ${formatarMoeda(saldo)}`, 40, finalY + 50);
 
             const nomeArquivo = `historico_transacoes_${new Date().toISOString().slice(0, 10)}.pdf`;
             doc.save(nomeArquivo);
@@ -1357,23 +1704,21 @@
             const larguraUtil = larguraPagina - margem * 2;
 
             // ---- Filtros ativos ----
-            const fMes = document.getElementById('proj-filtro-mes').value;
-            const fTipo = document.getElementById('proj-filtro-tipo').value;
-            const fCat = document.getElementById('proj-filtro-categoria').value;
-            const fBanco = document.getElementById('proj-filtro-banco').value;
-            const fResp = document.getElementById('proj-filtro-responsavel').value;
+            const fMes = lerFiltro('proj-filtro-mes');
+            const fTipo = lerFiltro('proj-filtro-tipo');
+            const fCat = lerFiltro('proj-filtro-categoria');
+            const fBanco = lerFiltro('proj-filtro-banco');
+            const fResp = lerFiltro('proj-filtro-responsavel');
             const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
             const tipoLabelsMap = { receita: 'Receita', despesa: 'Despesa' };
 
+            const mesTexto = m => { const [ano, mes] = m.split('-'); return `${nomesMeses[parseInt(mes, 10) - 1]}/${ano}`; };
             const filtrosAtivos = [];
-            if (fMes) {
-                const [ano, mes] = fMes.split('-');
-                filtrosAtivos.push(`Mês: ${nomesMeses[parseInt(mes, 10) - 1]}/${ano}`);
-            }
-            if (fTipo) filtrosAtivos.push(`Tipo: ${tipoLabelsMap[fTipo] || fTipo}`);
-            if (fCat) filtrosAtivos.push(`Categoria: ${fCat}`);
-            if (fBanco) filtrosAtivos.push(`Banco: ${fBanco}`);
-            if (fResp) filtrosAtivos.push(`Responsável: ${fResp}`);
+            if (fMes.length) filtrosAtivos.push(`Mês: ${fMes.sort().map(mesTexto).join(', ')}`);
+            if (fTipo.length) filtrosAtivos.push(`Tipo: ${fTipo.map(v => tipoLabelsMap[v] || v).join(', ')}`);
+            if (fCat.length) filtrosAtivos.push(`Categoria: ${fCat.join(', ')}`);
+            if (fBanco.length) filtrosAtivos.push(`Banco: ${fBanco.join(', ')}`);
+            if (fResp.length) filtrosAtivos.push(`Responsável: ${fResp.join(', ')}`);
 
             // ---- Cabeçalho ----
             doc.setFontSize(16);
@@ -1487,11 +1832,11 @@
             if (dados.qtdExcluidas > 0) {
                 doc.setFontSize(8);
                 doc.setTextColor(100, 116, 139);
-                doc.text(`${dados.qtdExcluidas} linha(s) marcada(s) como excluída(s) não estão incluídas neste relatório nem nos totais.`, margem, 54);
+                doc.text(`${dados.qtdExcluidas} linha(s) marcada(s) para ignorar nos totais não estão incluídas neste relatório nem nos totais.`, margem, 54);
             }
 
             const capitalizar = (txt) => txt ? txt.charAt(0).toUpperCase() + txt.slice(1) : txt;
-            const origemLabel = { recorrente: 'Recorrente', parcelado: 'Parcelado' };
+            const origemLabel = { recorrente: 'Recorrente', parcelado: 'Parcelado', fatura: 'Fatura (cartão)' };
 
             const corpo = dados.linhas.map(pj => [
                 capitalizar(pj.mesAnoLabel),
@@ -1532,6 +1877,80 @@
                 }
             });
 
+            // ---- Resumos no final do relatório: por responsável e por origem ----
+            const alturaPaginaResumo = doc.internal.pageSize.getHeight();
+            const verde = [4, 120, 87], vermelho = [190, 18, 60], escuro = [30, 41, 59];
+            const corSaldo = v => v >= 0 ? escuro : vermelho;
+            let yResumo = doc.lastAutoTable.finalY + 28;
+            const tituloResumo = (texto) => {
+                if (yResumo > alturaPaginaResumo - 120) { doc.addPage(); yResumo = 40; }
+                doc.setFontSize(12);
+                doc.setTextColor(...escuro);
+                doc.setFont(undefined, 'bold');
+                doc.text(texto, margem, yResumo);
+                doc.setFont(undefined, 'normal');
+                yResumo += 8;
+            };
+            const agrupar = (chaveFn) => {
+                const mapa = {};
+                dados.linhas.forEach(pj => {
+                    const k = chaveFn(pj);
+                    if (!mapa[k]) mapa[k] = { receitas: 0, despesas: 0, qtd: 0 };
+                    if (pj.tipo === 'receita') mapa[k].receitas += Number(pj.valorProjetado) || 0;
+                    else if (pj.tipo === 'despesa') mapa[k].despesas += Number(pj.valorProjetado) || 0;
+                    mapa[k].qtd++;
+                });
+                return mapa;
+            };
+            const linhaValores = (nome, g) => [
+                nome,
+                String(g.qtd),
+                { content: formatarMoeda(g.receitas), styles: { textColor: verde } },
+                { content: formatarMoeda(g.despesas), styles: { textColor: vermelho } },
+                { content: formatarMoeda(g.receitas - g.despesas), styles: { textColor: corSaldo(g.receitas - g.despesas), fontStyle: 'bold' } }
+            ];
+            const totalGeral = { receitas: dados.subtotalReceitas, despesas: dados.subtotalDespesas, qtd: dados.linhas.length };
+            const tabelaResumo = (cabecalhoNome, corpoResumo, rotuloTotal) => {
+                doc.autoTable({
+                    head: [[cabecalhoNome, 'Linhas', 'Receitas', 'Despesas', 'Saldo']],
+                    body: corpoResumo,
+                    foot: [linhaValores(rotuloTotal, totalGeral)],
+                    showFoot: 'lastPage',
+                    startY: yResumo,
+                    styles: { fontSize: 9, cellPadding: 5 },
+                    headStyles: { fillColor: escuro, textColor: 255, fontStyle: 'bold' },
+                    footStyles: { fillColor: [241, 245, 249], textColor: escuro, fontStyle: 'bold' },
+                    alternateRowStyles: { fillColor: [248, 250, 252] },
+                    columnStyles: { 1: { halign: 'center', cellWidth: 50 }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+                    margin: { left: margem, right: margem },
+                    didParseCell: (data) => {
+                        // alinha também cabeçalho e total com os valores
+                        if (data.column.index === 1) data.cell.styles.halign = 'center';
+                        else if (data.column.index >= 2) data.cell.styles.halign = 'right';
+                    }
+                });
+                yResumo = doc.lastAutoTable.finalY + 28;
+            };
+
+            if (dados.linhas.length > 0) {
+                // Total por responsável
+                const porResp = agrupar(pj => pj.responsavel || 'Geral');
+                tituloResumo('Total por Responsável');
+                tabelaResumo('Responsável',
+                    Object.keys(porResp).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(r => linhaValores(r, porResp[r])),
+                    'Total geral');
+
+                // Total por origem: fatura do cartão de crédito, recorrentes e parcelados
+                const porOrigem = agrupar(pj => pj.origem);
+                const vazio = { receitas: 0, despesas: 0, qtd: 0 };
+                tituloResumo('Total por Origem');
+                tabelaResumo('Origem', [
+                    linhaValores('Fatura cartão de crédito', porOrigem.fatura || vazio),
+                    linhaValores('Recorrentes', porOrigem.recorrente || vazio),
+                    linhaValores('Parcelados', porOrigem.parcelado || vazio)
+                ], 'Total geral');
+            }
+
             // ---- Numeração de páginas ----
             const totalPaginas = doc.getNumberOfPages();
             const alturaPagina = doc.internal.pageSize.getHeight();
@@ -1546,17 +1965,13 @@
         }
 
         function limparFiltrosProjecoes() {
-            document.getElementById('proj-filtro-mes').value = '';
-            document.getElementById('proj-filtro-tipo').value = '';
-            document.getElementById('proj-filtro-categoria').value = '';
-            document.getElementById('proj-filtro-banco').value = '';
-            document.getElementById('proj-filtro-responsavel').value = '';
+            ['proj-filtro-mes', 'proj-filtro-tipo', 'proj-filtro-categoria', 'proj-filtro-banco', 'proj-filtro-responsavel'].forEach(limparFiltro);
             processarMenuProjecoes();
         }
 
         function limparFiltrosDashboard() {
             document.getElementById('dashboard-mes').value = new Date().toLocaleDateString('sv-SE').slice(0, 7);
-            document.getElementById('dashboard-responsavel').value = '';
+            limparFiltro('dashboard-responsavel');
             atualizarDashboard();
         }
 
@@ -2042,10 +2457,10 @@
 
         function atualizarGraficoDespesasFiltro() {
             const mes = document.getElementById('dashboard-mes').value;
-            const responsavel = document.getElementById('dashboard-responsavel').value;
+            const responsavel = lerFiltro('dashboard-responsavel');
             const despesasPorCategoria = {};
             db.transacoes.forEach(t => {
-                if (t.tipo === 'despesa' && t.data && t.data.startsWith(mes) && (!responsavel || (t.responsavel || 'Geral') === responsavel)) {
+                if (t.tipo === 'despesa' && t.data && t.data.startsWith(mes) && (!responsavel.length || responsavel.includes(t.responsavel || 'Geral'))) {
                     const cat = t.categoria || 'Outros';
                     despesasPorCategoria[cat] = (despesasPorCategoria[cat] || 0) + t.valor;
                 }
@@ -2175,24 +2590,26 @@
                 <li class="flex justify-between items-center p-3 text-sm bg-white gap-2"><span class="truncate min-w-0 tt-truncar"><i class="fa-solid fa-file-invoice-dollar mr-2 text-slate-400"></i>${escapeHtml(imp)}</span> <div class="space-x-2 flex-shrink-0"><button onclick="abrirLancamentoPorItemCadastro('impostos', ${i})" class="text-emerald-600 hover:text-emerald-800 cursor-pointer" title="Novo lançamento nesta categoria"><i class="fa-solid fa-plus"></i></button><button onclick="removerItem('impostos', ${i})" class="text-rose-500 hover:text-rose-700 cursor-pointer"><i class="fa-solid fa-trash"></i></button></div></li>
             `).join('');
 
-            const fMes = document.getElementById('filtro-mes').value;
-            const fBanco = document.getElementById('filtro-banco').value;
-            const fResp = document.getElementById('filtro-responsavel').value;
-            const fTipo = document.getElementById('filtro-tipo').value;
-            const fStatus = document.getElementById('filtro-status').value;
-            const fCat = document.getElementById('filtro-categoria').value;
+            preencherOpcoesMes('filtro-mes', db.transacoes.map(t => (t.data || '').slice(0, 7)), 'Todos os Meses', true);
+
+            const fMes = lerFiltro('filtro-mes');
+            const fBanco = lerFiltro('filtro-banco');
+            const fResp = lerFiltro('filtro-responsavel');
+            const fTipo = lerFiltro('filtro-tipo');
+            const fStatus = lerFiltro('filtro-status');
+            const fCat = lerFiltro('filtro-categoria');
             const fBusca = document.getElementById('filtro-busca').value.toLowerCase().trim();
 
 
             const tbody = document.getElementById('tabela-transacoes-body');
             
             const transacoesFiltradas = db.transacoes.filter(t => {
-                if (fMes && !t.data.startsWith(fMes)) return false;
-                if (fBanco && t.banco !== fBanco) return false;
-                if (fResp && t.responsavel !== fResp) return false;
-                if (fTipo && t.tipo !== fTipo) return false;
-                if (fStatus && t.status !== fStatus) return false;
-                if (fCat && t.categoria !== fCat) return false;
+                if (fMes.length && !fMes.includes((t.data || '').slice(0, 7))) return false;
+                if (fBanco.length && !fBanco.includes(t.banco)) return false;
+                if (fResp.length && !fResp.includes(t.responsavel)) return false;
+                if (fTipo.length && !fTipo.includes(t.tipo)) return false;
+                if (fStatus.length && !fStatus.includes(t.status)) return false;
+                if (fCat.length && !fCat.includes(t.categoria)) return false;
 
                 if (fBusca) {
                     const dataFmt = t.data.split('-').reverse().join('/');
@@ -2318,8 +2735,9 @@
         function atualizarDashboard() {
             const mesAtualStr = document.getElementById('dashboard-mes').value;
             if (!mesAtualStr) return;
-            const responsavelDashboard = document.getElementById('dashboard-responsavel').value;
-            const correspondeResponsavel = item => !responsavelDashboard || (item.responsavel || 'Geral') === responsavelDashboard;
+            const responsaveisDashboard = lerFiltro('dashboard-responsavel');
+            const responsavelDashboard = responsaveisDashboard.length > 0;
+            const correspondeResponsavel = item => !responsavelDashboard || responsaveisDashboard.includes(item.responsavel || 'Geral');
             let receitasProjetadas = 0;
             let despesasProjetadas = 0;
             (window.listaProjecoesCalculada || []).forEach(p => {
@@ -2472,7 +2890,6 @@
         function processarMenuParcelados() {
             const agrupadas = {};
             const bancoSelect = document.getElementById('parc-filtro-banco');
-            const bancoSelecionado = bancoSelect.value;
 
             db.transacoes.forEach(t => {
                 const match = t.descricao.match(/^(.*?)\s*\((\d+)\/(\d+)\)$/);
@@ -2502,18 +2919,18 @@
             });
 
             const bancos = [...new Set(Object.values(agrupadas).map(compra => compra.banco))].sort();
-            bancoSelect.innerHTML = '<option value="">Todos os bancos / cartões</option>' + bancos.map(banco => `<option value="${escapeHtml(banco)}">${escapeHtml(banco)}</option>`).join('');
-            bancoSelect.value = bancos.includes(bancoSelecionado) ? bancoSelecionado : '';
+            const htmlBancos = '<option value="">Todos os bancos / cartões</option>' + bancos.map(banco => `<option value="${escapeHtml(banco)}">${escapeHtml(banco)}</option>`).join('');
+            if (bancoSelect.innerHTML !== htmlBancos) bancoSelect.innerHTML = htmlBancos;
+            const bancosFiltro = lerFiltro('parc-filtro-banco').filter(b => bancos.includes(b));
             const busca = document.getElementById('parc-filtro-busca').value.toLocaleLowerCase('pt-BR').trim();
-            const situacao = document.getElementById('parc-filtro-situacao').value;
+            const situacoes = lerFiltro('parc-filtro-situacao');
             const listaCompras = Object.values(agrupadas).map(compra => {
                 compra.vencer = Math.max(0, compra.totalParcelas - compra.pagas);
                 return compra;
             }).filter(compra => {
                 if (busca && !compra.descricao.toLocaleLowerCase('pt-BR').includes(busca)) return false;
-                if (bancoSelect.value && compra.banco !== bancoSelect.value) return false;
-                if (situacao === 'pendente' && compra.vencer === 0) return false;
-                if (situacao === 'quitada' && compra.vencer !== 0) return false;
+                if (bancosFiltro.length && !bancosFiltro.includes(compra.banco)) return false;
+                if (situacoes.length && !situacoes.includes(compra.vencer === 0 ? 'quitada' : 'pendente')) return false;
                 return true;
             });
 
@@ -2581,15 +2998,27 @@
             return cat.includes('transferencia entre contas') || cat.includes('cartao de credito') || cat.includes('juros');
         }
 
+        // Cartões cuja fatura vence no mês seguinte ao da compra: as compras entram nas projeções um mês depois.
+        const BANCOS_FATURA_MES_SEGUINTE = ['nubank'];
+        function vaiParaFaturaSeguinte(t) {
+            if (!t || t.pagamento !== 'Cartão de Crédito' || !t.banco) return false;
+            return BANCOS_FATURA_MES_SEGUINTE.includes(String(t.banco).trim().toLocaleLowerCase('pt-BR'));
+        }
+        function somarMeses(anoMes, n) {
+            const [a, m] = anoMes.split('-').map(Number);
+            const d = new Date(a, m - 1 + n, 1);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+
         function processarMenuProjecoes() {
             const tbodyProjecoes = document.getElementById('tabela-projecoes-body');
             
             // Obter valores dos filtros de projeção
-            const filtroMesProj = document.getElementById('proj-filtro-mes').value;
-            const filtroTipoProj = document.getElementById('proj-filtro-tipo').value;
-            const filtroCategoriaProj = document.getElementById('proj-filtro-categoria').value;
-            const filtroBancoProj = document.getElementById('proj-filtro-banco').value;
-            const filtroResponsavelProj = document.getElementById('proj-filtro-responsavel').value;
+            const filtroMesProj = lerFiltro('proj-filtro-mes');
+            const filtroTipoProj = lerFiltro('proj-filtro-tipo');
+            const filtroCategoriaProj = lerFiltro('proj-filtro-categoria');
+            const filtroBancoProj = lerFiltro('proj-filtro-banco');
+            const filtroResponsavelProj = lerFiltro('proj-filtro-responsavel');
 
             const REGEX_PARCELA = /^(.*) \((\d+)\/(\d+)\)$/;
             const PERIODICIDADE_MESES = { mensal: 1, bimestral: 2, trimestral: 3, semestral: 6, anual: 12 };
@@ -2658,7 +3087,14 @@
                 const ultimaTx = item.transacoes.reduce((max, tx) => (!max || tx.data > max.data) ? tx : max, null);
                 const recorrenteAtiva = !ultimaTx || ultimaTx.recorrente !== false;
 
-                if (media3M > 0 && recorrenteAtiva) {
+                // Compras deste item feitas no mês atual no cartão Nubank vencem no próximo mês:
+                // o primeiro mês projetado usa o valor real lançado (quando houver) em vez da média.
+                const txFaturaMesAtual = item.tipo === 'despesa'
+                    ? item.transacoes.filter(tx => tx.data && tx.data.startsWith(mesAtualKey) && vaiParaFaturaSeguinte(tx))
+                    : [];
+                const valorFaturaMesAtual = txFaturaMesAtual.reduce((acc, tx) => acc + (Number(tx.valor) || 0), 0);
+
+                if ((media3M > 0 || valorFaturaMesAtual > 0) && recorrenteAtiva) {
                     for (let m = 0; m < 12; m++) {
                         if (m % intervaloMeses !== 0) continue; // respeita a periodicidade escolhida
 
@@ -2670,9 +3106,12 @@
 
                         // Verificar se há valor/descrição customizados salvos para esta projeção
                         let chaveCustom = `${anoMesKey}_${item.idChave}`;
+                        const usaFaturaReal = m === 0 && valorFaturaMesAtual > 0;
+                        const valorBaseMes = usaFaturaReal ? valorFaturaMesAtual : media3M;
+                        if (valorBaseMes <= 0) continue;
                         let valorFinal = db.projecoesEditadas && db.projecoesEditadas[chaveCustom] !== undefined 
                             ? db.projecoesEditadas[chaveCustom] 
-                            : media3M;
+                            : valorBaseMes;
                         let descricaoFinal = db.projecoesDescricoesEditadas && db.projecoesDescricoesEditadas[chaveCustom] !== undefined
                             ? db.projecoesDescricoesEditadas[chaveCustom]
                             : item.descricao;
@@ -2686,7 +3125,7 @@
                             responsavel: ultimaTx?.responsavel || 'Geral',
                             categoria: item.categoria,
                             banco: item.banco,
-                            valorBase: media3M,
+                            valorBase: valorBaseMes,
                             valorProjetado: valorFinal,
                             chaveCustom: chaveCustom,
                             idChave: item.idChave,
@@ -2702,9 +3141,10 @@
                 const match = t.descricao.match(REGEX_PARCELA);
                 if (!match || t.tipo !== 'despesa') return;
                 if (categoriaExcluidaDeProjecao(t.categoria)) return; // Ignora transferências entre contas e cartão de crédito
-                if (!t.data || t.data.slice(0, 7) <= mesAtualKey) return; // desconsidera o mês atual e os anteriores
-
-                const anoMesKey = t.data.slice(0, 7);
+                if (!t.data) return;
+                // No cartão Nubank a parcela vence no mês seguinte ao lançamento
+                const anoMesKey = vaiParaFaturaSeguinte(t) ? somarMeses(t.data.slice(0, 7), 1) : t.data.slice(0, 7);
+                if (anoMesKey <= mesAtualKey) return; // desconsidera o mês atual e os anteriores
                 const [, descBase, numParcelaStr, totalParcelasStr] = match;
                 const chaveCustom = `parcela_${t.id}`;
 
@@ -2736,22 +3176,81 @@
                 });
             });
 
+            // Compras avulsas (não fixas e não parceladas) feitas no mês atual no cartão Nubank:
+            // entram na projeção do mês seguinte, quando a fatura vence, com o valor real lançado.
+            const mesFatura = somarMeses(mesAtualKey, 1);
+            const labelMesFatura = new Date(mesFatura + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            db.transacoes.forEach(t => {
+                if (t.tipo !== 'despesa' || !t.data || !t.data.startsWith(mesAtualKey)) return;
+                if (!vaiParaFaturaSeguinte(t) || t.status === 'pago') return;
+                if (REGEX_PARCELA.test(t.descricao) || t.classificacao === 'fixa') return; // já tratadas acima
+                if (categoriaExcluidaDeProjecao(t.categoria)) return;
+
+                const chaveCustom = `fatura_${t.id}`;
+                const descricaoFinal = db.projecoesDescricoesEditadas && db.projecoesDescricoesEditadas[chaveCustom] !== undefined
+                    ? db.projecoesDescricoesEditadas[chaveCustom]
+                    : t.descricao;
+                const valorFinal = db.projecoesEditadas && db.projecoesEditadas[chaveCustom] !== undefined
+                    ? db.projecoesEditadas[chaveCustom]
+                    : t.valor;
+
+                listaProjecoesCalculada.push({
+                    dataOrdenacao: mesFatura,
+                    mesAnoLabel: labelMesFatura,
+                    descricao: descricaoFinal,
+                    origem: 'fatura',
+                    tipo: 'despesa',
+                    responsavel: t.responsavel || 'Geral',
+                    categoria: t.categoria || 'Geral',
+                    banco: t.banco,
+                    valorBase: t.valor,
+                    valorProjetado: valorFinal,
+                    chaveCustom: chaveCustom,
+                    idChave: null,
+                    periodicidade: null
+                });
+            });
+
+            // Banco e responsável alterados pelo usuário (a alteração do mês vale mais que a de "todos os meses")
+            const bancosEditados = db.projecoesBancosEditados || {};
+            const respEditados = db.projecoesResponsaveisEditados || {};
+            listaProjecoesCalculada.forEach(p => {
+                const chaveTodos = p.idChave ? `*_${p.idChave}` : null;
+                const banco = bancosEditados[p.chaveCustom] ?? (chaveTodos ? bancosEditados[chaveTodos] : undefined);
+                const resp = respEditados[p.chaveCustom] ?? (chaveTodos ? respEditados[chaveTodos] : undefined);
+                if (banco) p.banco = banco;
+                if (resp) p.responsavel = resp;
+            });
+
             // Aplicar Ordenação CRESCENTE por mês de projeção (dataOrdenacao)
             listaProjecoesCalculada.sort((a, b) => a.dataOrdenacao.localeCompare(b.dataOrdenacao));
+
+            // Linhas excluídas pelo usuário deixam de existir nas projeções (tabela, totais, gráfico e dashboard)
+            if (!db.projecoesRemovidas) db.projecoesRemovidas = {};
+            listaProjecoesCalculada = listaProjecoesCalculada.filter(p => !db.projecoesRemovidas[p.chaveCustom]);
+            const qtdRemovidas = Object.keys(db.projecoesRemovidas).length;
+            const btnRestaurar = document.getElementById('btn-restaurar-projecoes');
+            btnRestaurar.classList.toggle('hidden', qtdRemovidas === 0);
+            btnRestaurar.classList.toggle('flex', qtdRemovidas > 0);
+            document.getElementById('proj-contador-removidas').textContent = `(${qtdRemovidas})`;
+
+            preencherOpcoesMes('proj-filtro-mes', listaProjecoesCalculada.map(p => p.dataOrdenacao), 'Todos os Meses', false);
+
             window.listaProjecoesCalculada = listaProjecoesCalculada;
             atualizarTotaisProjetadosDashboard();
 
             // Aplicar Filtros de Projeção (mês, tipo, categoria, banco)
             const listaFiltrada = listaProjecoesCalculada.filter(p => {
-                if (filtroMesProj && p.dataOrdenacao !== filtroMesProj) return false;
-                if (filtroTipoProj && p.tipo !== filtroTipoProj) return false;
-                if (filtroCategoriaProj && p.categoria !== filtroCategoriaProj) return false;
-                if (filtroBancoProj && p.banco !== filtroBancoProj) return false;
-                if (filtroResponsavelProj && (p.responsavel || 'Geral') !== filtroResponsavelProj) return false;
+                if (filtroMesProj.length && !filtroMesProj.includes(p.dataOrdenacao)) return false;
+                if (filtroTipoProj.length && !filtroTipoProj.includes(p.tipo)) return false;
+                if (filtroCategoriaProj.length && !filtroCategoriaProj.includes(p.categoria)) return false;
+                if (filtroBancoProj.length && !filtroBancoProj.includes(p.banco)) return false;
+                if (filtroResponsavelProj.length && !filtroResponsavelProj.includes(p.responsavel || 'Geral')) return false;
                 return true;
             });
 
             if (!db.projecoesExcluidas) db.projecoesExcluidas = {};
+            const selecionadasAntes = new Set(Array.from(document.querySelectorAll('.projecao-checkbox:checked')).map(cb => cb.value));
 
             if (listaFiltrada.length === 0) {
                 tbodyProjecoes.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400 italic">Nenhuma projeção encontrada com os filtros selecionados.</td></tr>`;
@@ -2764,18 +3263,21 @@
                     const excluida = !!db.projecoesExcluidas[p.chaveCustom];
                     let badgeColor = p.tipo === 'receita' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600';
                     let valorClasse = p.tipo === 'receita' ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
-                    let origemBadge = p.origem === 'parcelado' 
+                    let origemBadge = p.origem === 'fatura'
+                        ? '<span class="px-2 py-1 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 uppercase whitespace-nowrap" title="Compra do mês atual no cartão Nubank, paga na fatura deste mês"><i class="fa-solid fa-file-invoice mr-1"></i>Fatura</span>'
+                        : p.origem === 'parcelado' 
                         ? '<span class="px-2 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 uppercase whitespace-nowrap"><i class="fa-solid fa-credit-card mr-1"></i>Parcelado</span>'
                         : '<span class="px-2 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 uppercase whitespace-nowrap"><i class="fa-solid fa-rotate mr-1"></i>Recorrente</span>';
 
                     const descEscapada = escapeHtml(p.descricao);
+                    const chaveAttr = escapeHtml(p.chaveCustom);
                     const linhaClasse = excluida ? 'opacity-40 hover:bg-slate-50' : 'hover:bg-slate-50';
                     const descClasse = excluida ? 'line-through' : '';
 
                     return `
                         <tr class="${linhaClasse}">
                             <td class="p-3 md:p-4 text-center">
-                                <input type="checkbox" onchange="toggleExclusaoProjecao('${p.chaveCustom}', this.checked)" ${excluida ? 'checked' : ''} class="w-4 h-4 accent-rose-600 cursor-pointer" title="Marcar para excluir esta linha dos totais projetados">
+                                <input type="checkbox" value="${chaveAttr}" onchange="atualizarContadorProjecoes()" ${selecionadasAntes.has(p.chaveCustom) ? 'checked' : ''} class="projecao-checkbox w-4 h-4 accent-rose-600 cursor-pointer" title="Selecionar esta linha" aria-label="Selecionar linha">
                             </td>
                             <td class="p-3 md:p-4 font-medium text-slate-800 capitalize"><span class="tt-truncar block truncate max-w-[11rem]"><i class="fa-regular fa-calendar mr-2 text-slate-400"></i>${escapeHtml(p.mesAnoLabel)}</span></td>
                             <td class="p-3 md:p-4"><span class="tt-truncar block truncate max-w-[16rem] md:max-w-xs ${descClasse}">${descEscapada}</span></td>
@@ -2786,14 +3288,20 @@
                             <td class="p-3 md:p-4 text-slate-600">${formatarMoeda(p.valorBase)}</td>
                             <td class="p-3 md:p-4 ${valorClasse}">${formatarMoeda(p.valorProjetado)}</td>
                             <td class="p-3 md:p-4 text-center">
-                                <button onclick="editarProjecao('${p.chaveCustom}')" class="text-slate-400 hover:text-indigo-600 cursor-pointer" title="Editar Descrição, Valor e Periodicidade"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <div class="flex items-center justify-center gap-3">
+                                    <button type="button" data-chave="${chaveAttr}" onclick="editarProjecao(this.dataset.chave)" class="text-slate-400 hover:text-indigo-600 cursor-pointer" title="Editar Descrição, Valor e Periodicidade" aria-label="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button type="button" data-chave="${chaveAttr}" onclick="toggleExclusaoProjecao(this.dataset.chave, ${excluida ? 'false' : 'true'})" class="${excluida ? 'text-amber-500 hover:text-amber-700' : 'text-slate-400 hover:text-amber-600'} cursor-pointer" title="${excluida ? 'Voltar a considerar nos totais' : 'Ignorar nos totais (mantém a linha visível)'}" aria-label="${excluida ? 'Voltar a considerar nos totais' : 'Ignorar nos totais'}"><i class="fa-solid ${excluida ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
+                                    <button type="button" data-chave="${chaveAttr}" onclick="excluirProjecao(this.dataset.chave)" class="text-rose-500 hover:text-rose-700 cursor-pointer" title="Excluir esta linha das projeções" aria-label="Excluir linha"><i class="fa-solid fa-trash"></i></button>
+                                </div>
                             </td>
                         </tr>
                     `;
                 }).join('');
             }
 
-            // ---- Subtotais (respeitam os filtros ativos e ignoram linhas marcadas como excluídas) ----
+            atualizarContadorProjecoes();
+
+            // ---- Subtotais (respeitam os filtros ativos e ignoram linhas marcadas para ignorar nos totais) ----
             const listaParaCalculo = listaFiltrada.filter(p => !db.projecoesExcluidas[p.chaveCustom]);
 
             let subtotalReceitas = 0;
@@ -2818,9 +3326,9 @@
             // mas ignora o filtro de mês/tipo, já que o objetivo do gráfico é comparar todos os meses lado a lado.
             const listaParaGrafico = listaProjecoesCalculada.filter(p => {
                 if (db.projecoesExcluidas[p.chaveCustom]) return false;
-                if (filtroCategoriaProj && p.categoria !== filtroCategoriaProj) return false;
-                if (filtroBancoProj && p.banco !== filtroBancoProj) return false;
-                if (filtroResponsavelProj && (p.responsavel || 'Geral') !== filtroResponsavelProj) return false;
+                if (filtroCategoriaProj.length && !filtroCategoriaProj.includes(p.categoria)) return false;
+                if (filtroBancoProj.length && !filtroBancoProj.includes(p.banco)) return false;
+                if (filtroResponsavelProj.length && !filtroResponsavelProj.includes(p.responsavel || 'Geral')) return false;
                 return true;
             });
 
@@ -2882,7 +3390,7 @@
         function abrirDetalheDashboard(tipoCard) {
             const mes = document.getElementById('dashboard-mes').value;
             if (!mes) return;
-            const responsavelDashboard = document.getElementById('dashboard-responsavel').value;
+            const responsaveisDashboard = lerFiltro('dashboard-responsavel');
             const ehReceita = tipoCard.startsWith('receita');
             const ehProjetado = tipoCard.endsWith('proj');
             const tipo = ehReceita ? 'receita' : 'despesa';
@@ -2899,7 +3407,7 @@
                         categoria: p.categoria || 'Geral',
                         banco: p.banco || '',
                         responsavel: p.responsavel || 'Geral',
-                        origem: p.origem === 'parcelado' ? 'parcelado' : 'recorrente',
+                        origem: ['parcelado', 'fatura'].includes(p.origem) ? p.origem : 'recorrente',
                         valor: Number(p.valorProjetado) || 0
                     }));
             } else {
@@ -2921,17 +3429,17 @@
 
             const preencher = (id, rotuloTodos, valores, selecionado) => {
                 const lista = [...new Set(valores.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-                if (selecionado && !lista.includes(selecionado)) lista.push(selecionado);
+                (selecionado || []).forEach(v => { if (!lista.includes(v)) lista.push(v); });
                 const el = document.getElementById(id);
                 el.innerHTML = `<option value="">${rotuloTodos}</option>` +
                     lista.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
-                el.value = selecionado || '';
+                definirFiltro(id, selecionado || []);
             };
-            preencher('dd-categoria', 'Todas', itens.map(i => i.categoria), '');
-            preencher('dd-banco', 'Todos', itens.map(i => i.banco), '');
-            preencher('dd-responsavel', 'Todos', itens.map(i => i.responsavel), responsavelDashboard);
+            preencher('dd-categoria', 'Todas', itens.map(i => i.categoria), []);
+            preencher('dd-banco', 'Todos', itens.map(i => i.banco), []);
+            preencher('dd-responsavel', 'Todos', itens.map(i => i.responsavel), responsaveisDashboard);
             document.getElementById('dd-busca').value = '';
-            document.getElementById('dd-origem').value = '';
+            limparFiltro('dd-origem');
             document.getElementById('dd-origem-wrap').classList.toggle('hidden', !ehProjetado);
 
             const nomeMes = new Date(mes + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -2950,17 +3458,17 @@
             if (!_dd) return;
             const { ehReceita, ehProjetado, itens } = _dd;
             const busca = document.getElementById('dd-busca').value.trim().toLocaleLowerCase('pt-BR');
-            const fCat = document.getElementById('dd-categoria').value;
-            const fBanco = document.getElementById('dd-banco').value;
-            const fResp = document.getElementById('dd-responsavel').value;
-            const fOrigem = ehProjetado ? document.getElementById('dd-origem').value : '';
+            const fCat = lerFiltro('dd-categoria');
+            const fBanco = lerFiltro('dd-banco');
+            const fResp = lerFiltro('dd-responsavel');
+            const fOrigem = ehProjetado ? lerFiltro('dd-origem') : [];
 
             const linhas = itens
                 .filter(i => (!busca || i.descricao.toLocaleLowerCase('pt-BR').includes(busca))
-                    && (!fCat || i.categoria === fCat)
-                    && (!fBanco || i.banco === fBanco)
-                    && (!fResp || i.responsavel === fResp)
-                    && (!fOrigem || i.origem === fOrigem))
+                    && (!fCat.length || fCat.includes(i.categoria))
+                    && (!fBanco.length || fBanco.includes(i.banco))
+                    && (!fResp.length || fResp.includes(i.responsavel))
+                    && (!fOrigem.length || fOrigem.includes(i.origem)))
                 .sort(ehProjetado ? (a, b) => b.valor - a.valor : (a, b) => a.data.localeCompare(b.data));
 
             const cor = ehReceita ? 'emerald' : 'rose';
@@ -2976,7 +3484,7 @@
                 ? ['Descrição', 'Categoria', 'Banco', 'Responsável', 'Origem', 'Valor']
                 : ['Data', 'Descrição', 'Categoria', 'Banco', 'Responsável', 'Valor'];
             const celulas = l => ehProjetado
-                ? [l.descricao, l.categoria, l.banco || '—', l.responsavel, l.origem === 'parcelado' ? 'Parcelado' : 'Recorrente']
+                ? [l.descricao, l.categoria, l.banco || '—', l.responsavel, ({ parcelado: 'Parcelado', fatura: 'Fatura (cartão)' })[l.origem] || 'Recorrente']
                 : [l.dataBR, l.descricao, l.categoria, l.banco || '—', l.responsavel];
 
             document.getElementById('dd-corpo').innerHTML = linhas.length === 0
@@ -2995,7 +3503,8 @@
         }
 
         function limparFiltrosDetalheDashboard() {
-            ['dd-busca', 'dd-categoria', 'dd-banco', 'dd-responsavel', 'dd-origem'].forEach(id => { document.getElementById(id).value = ''; });
+            document.getElementById('dd-busca').value = '';
+            ['dd-categoria', 'dd-banco', 'dd-responsavel', 'dd-origem'].forEach(limparFiltro);
             renderDetalheDashboard();
         }
 
@@ -3019,6 +3528,61 @@
             saveData();
         }
 
+        function toggleSelecionarTodasProjecoes(master) {
+            document.querySelectorAll('.projecao-checkbox').forEach(cb => { cb.checked = master.checked; });
+            atualizarContadorProjecoes();
+        }
+
+        function atualizarContadorProjecoes() {
+            const todas = document.querySelectorAll('.projecao-checkbox');
+            const marcadas = document.querySelectorAll('.projecao-checkbox:checked');
+            const contador = document.getElementById('proj-contador-selecionadas');
+            if (contador) {
+                contador.textContent = marcadas.length;
+                contador.classList.toggle('hidden', marcadas.length === 0);
+            }
+            const master = document.getElementById('proj-selecionar-todas');
+            if (master) master.checked = todas.length > 0 && marcadas.length === todas.length;
+        }
+
+        function removerProjecoes(chaves) {
+            if (!db.projecoesRemovidas) db.projecoesRemovidas = {};
+            chaves.forEach(chave => {
+                db.projecoesRemovidas[chave] = true;
+                // limpa ajustes feitos nessa linha, que não serão mais usados
+                if (db.projecoesExcluidas) delete db.projecoesExcluidas[chave];
+            });
+            saveData();
+        }
+
+        function excluirProjecao(chaveCustom) {
+            const p = window.mapaProjecoesAtual ? window.mapaProjecoesAtual[chaveCustom] : null;
+            const nome = p ? `"${p.descricao}" (${p.mesAnoLabel})` : 'esta linha';
+            if (!confirm(`Excluir ${nome} das projeções?\n\nA linha some da tabela, dos totais e do dashboard. Os lançamentos em Transações não são alterados. Você pode trazê-la de volta em "Restaurar Excluídas".`)) return;
+            removerProjecoes([chaveCustom]);
+        }
+
+        function excluirProjecoesSelecionadas() {
+            const chaves = Array.from(document.querySelectorAll('.projecao-checkbox:checked')).map(cb => cb.value);
+            if (chaves.length === 0) {
+                alert('Marque ao menos uma linha na tabela de projeções.');
+                return;
+            }
+            const msg = chaves.length === 1
+                ? 'Excluir a linha selecionada das projeções?'
+                : `Excluir as ${chaves.length} linhas selecionadas das projeções?`;
+            if (!confirm(`${msg}\n\nOs lançamentos em Transações não são alterados. Você pode trazê-las de volta em "Restaurar Excluídas".`)) return;
+            removerProjecoes(chaves);
+        }
+
+        function restaurarProjecoesExcluidas() {
+            const qtd = Object.keys(db.projecoesRemovidas || {}).length;
+            if (qtd === 0) return;
+            if (!confirm(`Restaurar ${qtd === 1 ? 'a linha excluída' : `as ${qtd} linhas excluídas`} das projeções?`)) return;
+            db.projecoesRemovidas = {};
+            saveData();
+        }
+
         function editarProjecao(chaveCustom) {
             const p = window.mapaProjecoesAtual ? window.mapaProjecoesAtual[chaveCustom] : null;
             if (!p) return;
@@ -3028,6 +3592,22 @@
             document.getElementById('modal-proj-descricao').value = p.descricao;
             document.getElementById('modal-proj-valor').value = p.valorProjetado.toFixed(2);
             document.getElementById('modal-proj-titulo-mes').innerText = p.mesAnoLabel;
+
+            const opcoesSelect = (lista, atual) => {
+                const itens = [...lista];
+                if (atual && !itens.includes(atual)) itens.push(atual);
+                return itens.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+            };
+            const selBanco = document.getElementById('modal-proj-banco');
+            selBanco.innerHTML = opcoesSelect(db.bancos.map(b => b.nome), p.banco);
+            selBanco.value = p.banco || '';
+            const selResp = document.getElementById('modal-proj-responsavel');
+            selResp.innerHTML = opcoesSelect(db.responsaveis, p.responsavel || 'Geral');
+            selResp.value = p.responsavel || 'Geral';
+            const ehRecorrente = p.origem === 'recorrente' && !!p.idChave;
+            document.getElementById('modal-proj-div-todos-meses').classList.toggle('hidden', !ehRecorrente);
+            document.getElementById('modal-proj-div-todos-meses').classList.toggle('flex', ehRecorrente);
+            document.getElementById('modal-proj-todos-meses').checked = ehRecorrente;
 
             const divPeriodicidade = document.getElementById('modal-proj-div-periodicidade');
             if (p.origem === 'recorrente' && p.idChave) {
@@ -3071,6 +3651,26 @@
 
             db.projecoesEditadas[chaveCustom] = novoValor;
             db.projecoesDescricoesEditadas[chaveCustom] = novaDescricao;
+
+            // Banco e responsável: grava só se mudou em relação ao que a linha mostrava
+            if (!db.projecoesBancosEditados) db.projecoesBancosEditados = {};
+            if (!db.projecoesResponsaveisEditados) db.projecoesResponsaveisEditados = {};
+            const linha = window.mapaProjecoesAtual ? window.mapaProjecoesAtual[chaveCustom] : null;
+            const novoBanco = document.getElementById('modal-proj-banco').value;
+            const novoResp = document.getElementById('modal-proj-responsavel').value;
+            const todosMeses = idChave && document.getElementById('modal-proj-todos-meses').checked;
+            const gravar = (mapa, valor, valorAtual) => {
+                if (!valor || valor === valorAtual) return;
+                if (todosMeses) {
+                    mapa[`*_${idChave}`] = valor;
+                    // remove ajustes de meses isolados desse item para que todos fiquem iguais
+                    Object.keys(mapa).forEach(k => { if (k !== `*_${idChave}` && k.endsWith(`_${idChave}`)) delete mapa[k]; });
+                } else {
+                    mapa[chaveCustom] = valor;
+                }
+            };
+            gravar(db.projecoesBancosEditados, novoBanco, linha ? linha.banco : null);
+            gravar(db.projecoesResponsaveisEditados, novoResp, linha ? (linha.responsavel || 'Geral') : null);
 
             const divPeriodicidade = document.getElementById('modal-proj-div-periodicidade');
             if (!divPeriodicidade.classList.contains('hidden') && idChave) {
