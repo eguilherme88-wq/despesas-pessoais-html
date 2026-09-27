@@ -2,7 +2,22 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Finanças">
+    <script>
+        (function () {
+            let tema = null;
+            try { tema = localStorage.getItem('tema-sistema'); } catch (e) {}
+            if (tema !== 'claro' && tema !== 'escuro') {
+                tema = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'escuro' : 'claro';
+            }
+            if (tema === 'escuro') document.documentElement.classList.add('dark');
+        })();
+    </script>
     <title>Controle de Gastos Pessoais</title>
     <!-- Tailwind CSS para Estilização Moderna -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,6 +30,144 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     
+
+    <!-- Ajustes para celular e tela cheia -->
+    <style>
+        html, body { height: 100%; overscroll-behavior-y: none; }
+        body { -webkit-tap-highlight-color: transparent; }
+        /* Altura real da tela no celular (descontando barra de endereço) */
+        .altura-tela { height: 100vh; height: 100dvh; }
+        .modal-caixa { max-height: 90vh; max-height: calc(100dvh - 2rem); }
+
+        /* Barra inferior respeita a área do "home indicator" do iPhone */
+        #nav-mobile { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
+        #cabecalho-app { padding-top: calc(0.875rem + env(safe-area-inset-top, 0px)); }
+
+        @media (max-width: 767px) {
+            /* Espaço para o conteúdo não ficar escondido atrás da barra inferior */
+            #conteudo-app { padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); }
+
+            /* 16px evita o zoom automático do iPhone ao tocar em campos */
+            input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px !important; }
+
+            /* Esconde a barra inferior enquanto o teclado está aberto */
+            body.teclado-aberto #nav-mobile { display: none; }
+
+            /* Modais ocupam melhor a tela pequena */
+            .modal-fundo { padding: 0.5rem !important; align-items: flex-end !important; }
+            .modal-fundo > div { border-bottom-left-radius: 0.75rem; border-bottom-right-radius: 0.75rem; }
+            .modal-fundo .p-6 { padding: 1rem; }
+            .modal-fundo .px-6 { padding-left: 1rem; padding-right: 1rem; }
+            .modal-fundo .mx-6 { margin-left: 1rem; margin-right: 1rem; }
+
+            /* Tabelas viram cartões no celular */
+            table.tabela-mobile { white-space: normal; }
+            table.tabela-mobile thead { display: none; }
+            table.tabela-mobile tbody { display: block; background: #f8fafc; padding: 0.5rem; }
+            table.tabela-mobile tbody tr { display: block; background: #fff; border: 1px solid #e2e8f0 !important; border-radius: 0.875rem; padding: 0.35rem 0.85rem; margin-bottom: 0.6rem; }
+            table.tabela-mobile tbody tr:last-child { margin-bottom: 0; }
+            table.tabela-mobile tbody td { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.35rem; padding: 0.45rem 0 !important; text-align: right; border: 0; min-width: 0; }
+            table.tabela-mobile tbody td + td { border-top: 1px dashed #eef2f7; }
+            table.tabela-mobile tbody td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: #64748b; text-align: left; flex-shrink: 0; margin-right: auto; padding-right: 0.5rem; }
+            table.tabela-mobile tbody td:not([data-label])::before, table.tabela-mobile tbody td[data-label=""]::before { display: none; }
+            table.tabela-mobile tbody td[colspan] { justify-content: center; text-align: center; }
+            table.tabela-mobile tbody td > * { min-width: 0; }
+            table.tabela-mobile tbody td .tt-truncar { max-width: 58vw !important; }
+            table.tabela-mobile tbody td button { padding: 0.4rem 0.55rem; font-size: 1rem; }
+            table.tabela-mobile tbody td.celula-acoes > div, table.tabela-mobile tbody td.celula-acoes { gap: 0.25rem; }
+            table.tabela-mobile tfoot { display: block; }
+            table.tabela-mobile tfoot tr { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+            table.tabela-mobile tfoot td:empty { display: none; }
+        }
+
+        /* Tabelas compactas no computador: todas as colunas cabem na tela */
+        @media (min-width: 768px) {
+            table.tabela-mobile th, table.tabela-mobile td { padding: 0.6rem 0.4rem !important; vertical-align: middle; }
+            table.tabela-mobile th:first-child, table.tabela-mobile td:first-child { padding-left: 1rem !important; }
+            table.tabela-mobile th:last-child, table.tabela-mobile td:last-child { padding-right: 1rem !important; }
+            table.tabela-mobile th { white-space: normal; line-height: 1.2; font-size: 0.75rem; }
+            table.tabela-mobile td { font-size: 0.8125rem; }
+            table.tabela-mobile td.celula-status span { white-space: normal; display: inline-block; max-width: 4.75rem; text-align: center; line-height: 1.15; padding-top: 0.2rem; padding-bottom: 0.2rem; }
+        }
+        @media (min-width: 1536px) {
+            table.tabela-mobile th, table.tabela-mobile td { padding: 0.75rem 0.75rem !important; }
+        }
+
+
+        /* =================== TEMA ESCURO =================== */
+        html.dark { color-scheme: dark; }
+        html.dark body { background-color: #0b1220; color: #e2e8f0; }
+
+        html.dark .bg-white, html.dark .bg-white\/25 { background-color: #172033; }
+        html.dark .bg-white\/25 { background-color: rgba(255,255,255,0.2); }
+        html.dark .bg-gray-50, html.dark .bg-slate-50 { background-color: #111a2b; }
+        html.dark .bg-slate-100 { background-color: #25324a; }
+        html.dark .bg-slate-200 { background-color: #2f3d57; }
+        html.dark .bg-slate-900 { background-color: #070d18; }
+        html.dark .hover\:bg-slate-50:hover { background-color: #1e2a40; }
+        html.dark .hover\:bg-slate-200:hover { background-color: #33425e; }
+        html.dark .hover\:bg-slate-300:hover { background-color: #3d4d6b; }
+
+        html.dark .text-slate-900, html.dark .text-slate-800, html.dark .text-gray-800 { color: #f1f5f9; }
+        html.dark .text-slate-700 { color: #e2e8f0; }
+        html.dark .text-slate-600 { color: #cbd5e1; }
+        html.dark .text-slate-500 { color: #94a3b8; }
+        html.dark .text-slate-400 { color: #7f8ea6; }
+        html.dark .hover\:text-slate-600:hover { color: #e2e8f0; }
+
+        html.dark .border-slate-100, html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #24314a; }
+        html.dark .border-slate-200 { border-color: #2f3d57; }
+        html.dark .border-slate-300 { border-color: #3d4d6b; }
+        html.dark .border-slate-800 { border-color: #1a2538; }
+
+        html.dark .bg-emerald-50 { background-color: rgba(16,185,129,0.13); }
+        html.dark .bg-emerald-100, html.dark .hover\:bg-emerald-100:hover { background-color: rgba(16,185,129,0.22); }
+        html.dark .bg-rose-50 { background-color: rgba(244,63,94,0.13); }
+        html.dark .bg-rose-100 { background-color: rgba(244,63,94,0.22); }
+        html.dark .bg-amber-50 { background-color: rgba(245,158,11,0.13); }
+        html.dark .bg-amber-100 { background-color: rgba(245,158,11,0.22); }
+        html.dark .bg-indigo-50 { background-color: rgba(99,102,241,0.16); }
+        html.dark .bg-blue-50 { background-color: rgba(59,130,246,0.14); }
+        html.dark .bg-blue-100 { background-color: rgba(59,130,246,0.22); }
+        html.dark .bg-purple-100 { background-color: rgba(168,85,247,0.22); }
+        html.dark .bg-sky-50 { background-color: rgba(14,165,233,0.14); }
+
+        html.dark .border-emerald-100 { border-color: rgba(16,185,129,0.25); }
+        html.dark .border-emerald-200, html.dark .hover\:border-emerald-200:hover { border-color: rgba(16,185,129,0.4); }
+        html.dark .border-rose-100 { border-color: rgba(244,63,94,0.25); }
+        html.dark .hover\:border-rose-200:hover { border-color: rgba(244,63,94,0.4); }
+
+        html.dark .text-emerald-600, html.dark .text-emerald-700 { color: #34d399; }
+        html.dark .hover\:text-emerald-800:hover { color: #6ee7b7; }
+        html.dark .text-rose-600, html.dark .text-rose-700 { color: #fb7185; }
+        html.dark .text-amber-600, html.dark .text-amber-700 { color: #fbbf24; }
+        html.dark .text-indigo-600, html.dark .hover\:text-indigo-600:hover { color: #a5b4fc; }
+        html.dark .text-blue-600, html.dark .text-blue-700 { color: #60a5fa; }
+        html.dark .text-purple-700 { color: #c084fc; }
+        html.dark .text-sky-700 { color: #38bdf8; }
+
+        html.dark input:not([type="checkbox"]):not([type="radio"]), html.dark select, html.dark textarea { background-color: #0f1828; color: #e2e8f0; border-color: #2f3d57; }
+        html.dark input::placeholder, html.dark textarea::placeholder { color: #64748b; }
+        html.dark #tt-balao { background-color: #334155; border: 1px solid #475569; }
+        html.dark .shadow-sm, html.dark .shadow-lg, html.dark .shadow-xl { box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        html.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+        html.dark ::-webkit-scrollbar-thumb { background: #2f3d57; border-radius: 8px; }
+        html.dark ::-webkit-scrollbar-track { background: transparent; }
+
+        @media (max-width: 767px) {
+            html.dark table.tabela-mobile tbody { background: #111a2b; }
+            html.dark table.tabela-mobile tbody tr { background: #172033; border-color: #2f3d57 !important; }
+            html.dark table.tabela-mobile tbody td + td { border-top-color: #24314a; }
+            html.dark table.tabela-mobile tbody td::before { color: #94a3b8; }
+        }
+
+        /* Rodando como app instalado (tela inicial): já está em tela cheia */
+        @media (display-mode: standalone), (display-mode: fullscreen) {
+            .so-navegador { display: none !important; }
+            #splash-screen .btn-tema { right: 1rem; }
+        }
+    </style>
+
     <!-- Firebase App (Modular) e Firestore -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -47,7 +200,9 @@
 <body class="bg-gray-50 font-sans text-gray-800 pb-20 md:pb-0">
 
     <!-- SPLASH SCREEN / TELA DE ENTRADA & SENHA -->
-    <div id="splash-screen" class="fixed inset-0 z-50 flex bg-white">
+    <div id="splash-screen" class="fixed inset-0 z-50 flex bg-white overflow-y-auto">
+        <button type="button" onclick="alternarTema()" class="btn-tema absolute right-16 z-10 bg-slate-100 hover:bg-slate-200 text-slate-700 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer" style="top: calc(1rem + env(safe-area-inset-top, 0px));" title="Tema escuro" aria-label="Tema escuro"><i class="fa-solid fa-moon"></i></button>
+        <button type="button" onclick="alternarTelaCheia()" class="btn-tela-cheia so-navegador absolute right-4 z-10 bg-slate-100 hover:bg-slate-200 text-slate-700 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer" style="top: calc(1rem + env(safe-area-inset-top, 0px));" title="Tela cheia" aria-label="Tela cheia"><i class="fa-solid fa-expand"></i></button>
         <div class="w-64 bg-slate-900 text-white hidden md:flex flex-col justify-between border-r border-slate-800 p-5">
             <div>
                 <div class="flex items-center space-x-3 mb-8">
@@ -110,7 +265,7 @@
     </div>
 
     <!-- Navegação Inferior Fixa Apenas para Celular -->
-    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 text-white z-40 flex justify-around items-center border-t border-slate-800 py-2 px-1 shadow-lg">
+    <nav id="nav-mobile" class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 text-white z-40 flex justify-around items-center border-t border-slate-800 pt-2 px-1 shadow-lg" aria-label="Menu principal">
         <button onclick="switchTab('dashboard')" id="nav-mob-dashboard" class="flex flex-col items-center justify-center flex-1 py-1 text-emerald-400">
             <i class="fa-solid fa-chart-pie text-lg mb-0.5"></i>
             <span class="text-[10px]">Início</span>
@@ -131,9 +286,13 @@
             <i class="fa-solid fa-gear text-lg mb-0.5"></i>
             <span class="text-[10px]">Cadastros</span>
         </button>
-    </div>
+        <button onclick="switchTab('senha')" id="nav-mob-senha" class="flex flex-col items-center justify-center flex-1 py-1 text-slate-400">
+            <i class="fa-solid fa-key text-lg mb-0.5"></i>
+            <span class="text-[10px]">Senha</span>
+        </button>
+    </nav>
 
-    <div class="flex h-screen overflow-hidden">
+    <div class="flex altura-tela overflow-hidden">
         <!-- Sidebar (Apenas Desktop) -->
         <aside class="w-64 bg-slate-900 text-white hidden md:flex flex-col justify-between">
             <div class="p-5">
@@ -171,23 +330,25 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 flex flex-col h-full overflow-y-auto">
+        <main id="area-principal" class="flex-1 flex flex-col h-full overflow-y-auto min-w-0">
             <!-- Header -->
-            <header class="bg-white shadow-sm px-4 md:px-8 py-3.5 flex justify-between items-center sticky top-0 z-30">
-                <div class="flex items-center space-x-3">
+            <header id="cabecalho-app" class="bg-white shadow-sm px-4 md:px-8 pb-3.5 flex justify-between items-center gap-2 sticky top-0 z-30">
+                <div class="flex items-center space-x-3 min-w-0">
                     <div class="md:hidden bg-emerald-600 text-white p-2 rounded-lg text-sm">
                         <i class="fa-solid fa-wallet"></i>
                     </div>
-                    <h1 id="page-title" class="text-lg md:text-xl font-bold text-slate-800">Dashboard</h1>
+                    <h1 id="page-title" class="text-base sm:text-lg md:text-xl font-bold text-slate-800 truncate">Dashboard</h1>
                 </div>
-                <div class="flex items-center space-x-3">
-                    <span class="text-xs md:text-sm text-slate-500 hidden sm:inline"><i class="fa-regular fa-calendar-days mr-2"></i><span id="current-date"></span></span>
-                    <button onclick="bloquearSistema()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-lock mr-1"></i> Bloquear</button>
+                <div class="flex items-center space-x-2 md:space-x-3 flex-shrink-0">
+                    <span class="text-xs md:text-sm text-slate-500 hidden lg:inline"><i class="fa-regular fa-calendar-days mr-2"></i><span id="current-date"></span></span>
+                    <button type="button" onclick="alternarTema()" class="btn-tema bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer" title="Tema escuro" aria-label="Tema escuro"><i class="fa-solid fa-moon"></i><span class="rotulo-tema hidden sm:inline ml-1">Escuro</span></button>
+                    <button type="button" onclick="alternarTelaCheia()" class="btn-tela-cheia so-navegador bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer" title="Tela cheia" aria-label="Tela cheia"><i class="fa-solid fa-expand"></i><span class="rotulo-tela-cheia hidden sm:inline ml-1">Tela cheia</span></button>
+                    <button onclick="bloquearSistema()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer" title="Bloquear" aria-label="Bloquear"><i class="fa-solid fa-lock"></i><span class="hidden sm:inline ml-1">Bloquear</span></button>
                 </div>
             </header>
 
             <!-- Content Body -->
-            <div class="p-4 md:p-8 max-w-7xl mx-auto w-full space-y-6">
+            <div id="conteudo-app" class="p-3 sm:p-4 md:p-8 max-w-7xl mx-auto w-full space-y-6">
 
                 <!-- TAB: DASHBOARD -->
                 <section id="tab-dashboard" class="space-y-6">
@@ -456,7 +617,7 @@
                             <div id="filtro-resumo" class="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4"></div>
                         </div>
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm whitespace-nowrap">
+                            <table class="tabela-mobile w-full text-left border-collapse text-sm whitespace-nowrap">
                                 <thead>
                                     <tr class="bg-slate-50 text-slate-500 border-b border-slate-100">
                                         <th class="p-3 md:p-4 text-center w-10">
@@ -519,7 +680,7 @@
                             <span>Falta pagar: <strong id="parc-valor-restante" class="text-amber-700">R$ 0,00</strong></span>
                         </div>
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm whitespace-nowrap">
+                            <table class="tabela-mobile w-full text-left border-collapse text-sm whitespace-nowrap">
                                 <thead>
                                     <tr class="bg-slate-50 text-slate-500 border-b border-slate-100">
                                         <th class="p-3 md:p-4 font-semibold">Descrição da Compra</th>
@@ -630,7 +791,7 @@
                         </div>
 
                         <div class="overflow-x-auto pt-2">
-                            <table class="w-full text-left border-collapse text-sm whitespace-nowrap">
+                            <table class="tabela-mobile w-full text-left border-collapse text-sm whitespace-nowrap">
                                 <thead>
                                     <tr class="bg-slate-50 text-slate-500 border-b border-slate-100">
                                         <th class="p-3 md:p-4 font-semibold text-center"><input type="checkbox" id="proj-selecionar-todas" onchange="toggleSelecionarTodasProjecoes(this)" class="w-4 h-4 accent-rose-600 cursor-pointer align-middle" title="Selecionar todas as linhas filtradas" aria-label="Selecionar todas as linhas filtradas"></th>
@@ -772,8 +933,8 @@
     </div>
 
     <!-- MODAL: Editar Projeção (descrição, valor e periodicidade) -->
-    <div id="modal-editar-projecao" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <div id="modal-editar-projecao" class="modal-fundo fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4">
+        <div class="modal-caixa overflow-y-auto bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
             <div class="flex justify-between items-center">
                 <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-pen-to-square mr-2 text-indigo-600"></i>Editar Projeção</h3>
                 <button type="button" onclick="fecharModalProjecao()" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -831,8 +992,8 @@
     <div id="tt-balao" class="hidden fixed z-[70] w-max max-w-xs bg-slate-800 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-normal break-words pointer-events-none"></div>
 
     <!-- MODAL: Detalhamento dos cards do dashboard (receitas/despesas pagas e projetadas) -->
-    <div id="modal-detalhe-dashboard" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4" onclick="if (event.target === this) fecharDetalheDashboard()">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div id="modal-detalhe-dashboard" class="modal-fundo fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4" onclick="if (event.target === this) fecharDetalheDashboard()">
+        <div class="modal-caixa bg-white rounded-2xl shadow-xl w-full max-w-4xl flex flex-col">
             <div class="flex justify-between items-start gap-3 p-6 pb-3">
                 <div class="min-w-0">
                     <h3 id="dd-titulo" class="text-base font-bold text-slate-800"></h3>
@@ -871,13 +1032,13 @@
                 </div>
             </div>
             <div id="dd-resumo" class="mx-6 mb-3 flex justify-between items-center rounded-xl px-4 py-3 text-sm"></div>
-            <div id="dd-corpo" class="px-6 pb-6 overflow-auto"></div>
+            <div id="dd-corpo" class="px-6 pb-6 overflow-auto min-h-0 flex-1"></div>
         </div>
     </div>
 
     <!-- MODAL: Novo lançamento a partir de uma categoria já existente -->
-    <div id="modal-lanc-categoria" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4" onclick="if (event.target === this) fecharModalLancamentoCategoria()">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+    <div id="modal-lanc-categoria" class="modal-fundo fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4" onclick="if (event.target === this) fecharModalLancamentoCategoria()">
+        <div class="modal-caixa bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-y-auto p-6">
             <div class="flex justify-between items-center mb-1">
                 <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-tags mr-2 text-emerald-600"></i>Novo lançamento por categoria</h3>
                 <button type="button" onclick="fecharModalLancamentoCategoria()" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -938,8 +1099,173 @@
         </div>
     </div>
 
+    <!-- AVISO: como usar tela cheia no iPhone -->
+    <div id="modal-dica-tela-cheia" class="modal-fundo fixed inset-0 z-[80] hidden items-center justify-center bg-slate-900/50 p-4" onclick="if (event.target === this) fecharDicaTelaCheia()">
+        <div class="modal-caixa overflow-y-auto bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-3">
+            <div class="flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-expand mr-2 text-emerald-600"></i>Tela cheia no iPhone</h3>
+                <button type="button" onclick="fecharDicaTelaCheia()" class="text-slate-400 hover:text-slate-600 cursor-pointer" aria-label="Fechar"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-sm text-slate-600">O Safari do iPhone não deixa sites entrarem em tela cheia por um botão. Para usar o sistema sem as barras do navegador:</p>
+            <ol class="text-sm text-slate-700 space-y-2 list-decimal pl-5">
+                <li>Toque no botão <strong>Compartilhar</strong> <i class="fa-solid fa-arrow-up-from-bracket text-indigo-600"></i> do Safari.</li>
+                <li>Escolha <strong>Adicionar à Tela de Início</strong>.</li>
+                <li>Abra o sistema pelo novo ícone: ele abre em tela cheia, como um aplicativo.</li>
+            </ol>
+            <button type="button" onclick="fecharDicaTelaCheia()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-lg text-sm cursor-pointer">Entendi</button>
+        </div>
+    </div>
+
     <!-- Script de Funcionalidades e Regras -->
     <script>
+        // =====================================================================
+        // Tema claro / escuro
+        // =====================================================================
+        function temaEscuroAtivo() { return document.documentElement.classList.contains('dark'); }
+
+        function aplicarTemaGraficos() {
+            if (typeof Chart === 'undefined' || !Chart.defaults) return;
+            const escuro = temaEscuroAtivo();
+            Chart.defaults.color = escuro ? '#cbd5e1' : '#666';
+            Chart.defaults.borderColor = escuro ? 'rgba(148,163,184,0.18)' : 'rgba(0,0,0,0.1)';
+            if (Chart.defaults.elements && Chart.defaults.elements.arc) Chart.defaults.elements.arc.borderColor = escuro ? '#172033' : '#fff';
+            if (Chart.instances) Object.values(Chart.instances).forEach(c => { try { c.update('none'); } catch (e) {} });
+        }
+
+        function atualizarBotoesTema() {
+            const escuro = temaEscuroAtivo();
+            document.querySelectorAll('.btn-tema').forEach(b => {
+                const i = b.querySelector('i');
+                if (i) i.className = 'fa-solid ' + (escuro ? 'fa-sun' : 'fa-moon');
+                const rot = b.querySelector('.rotulo-tema');
+                if (rot) rot.textContent = escuro ? 'Claro' : 'Escuro';
+                b.title = escuro ? 'Mudar para tema claro' : 'Mudar para tema escuro';
+                b.setAttribute('aria-label', b.title);
+            });
+            const meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', escuro ? '#070d18' : '#0f172a');
+        }
+
+        function definirTema(tema) {
+            document.documentElement.classList.toggle('dark', tema === 'escuro');
+            try { localStorage.setItem('tema-sistema', tema); } catch (e) {}
+            atualizarBotoesTema();
+            aplicarTemaGraficos();
+        }
+
+        function alternarTema() { definirTema(temaEscuroAtivo() ? 'claro' : 'escuro'); }
+
+        atualizarBotoesTema();
+        aplicarTemaGraficos();
+
+        // =====================================================================
+        // Tela cheia e ajustes para celular
+        // =====================================================================
+        function toqueEhPrincipal() {
+            return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        }
+
+        function rolarParaTopo() {
+            const area = document.getElementById('area-principal');
+            if (area) area.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function emTelaCheia() {
+            return !!(document.fullscreenElement || document.webkitFullscreenElement);
+        }
+
+        function mostrarDicaTelaCheia() {
+            const m = document.getElementById('modal-dica-tela-cheia');
+            m.classList.remove('hidden'); m.classList.add('flex');
+        }
+        function fecharDicaTelaCheia() {
+            const m = document.getElementById('modal-dica-tela-cheia');
+            m.classList.add('hidden'); m.classList.remove('flex');
+        }
+
+        function alternarTelaCheia() {
+            const doc = document, el = document.documentElement;
+            if (emTelaCheia()) {
+                const sair = doc.exitFullscreen || doc.webkitExitFullscreen;
+                if (sair) sair.call(doc);
+                return;
+            }
+            const entrar = el.requestFullscreen || el.webkitRequestFullscreen;
+            if (!entrar) { mostrarDicaTelaCheia(); return; }
+            try {
+                const r = entrar.call(el, { navigationUI: 'hide' });
+                if (r && r.catch) r.catch(() => mostrarDicaTelaCheia());
+            } catch (e) { mostrarDicaTelaCheia(); }
+        }
+
+        function atualizarBotoesTelaCheia() {
+            const ativo = emTelaCheia();
+            document.querySelectorAll('.btn-tela-cheia').forEach(b => {
+                const i = b.querySelector('i');
+                if (i) i.className = 'fa-solid ' + (ativo ? 'fa-compress' : 'fa-expand');
+                const rot = b.querySelector('.rotulo-tela-cheia');
+                if (rot) rot.textContent = ativo ? 'Sair da tela cheia' : 'Tela cheia';
+                b.title = ativo ? 'Sair da tela cheia' : 'Tela cheia';
+                b.setAttribute('aria-label', b.title);
+            });
+        }
+        document.addEventListener('fullscreenchange', atualizarBotoesTelaCheia);
+        document.addEventListener('webkitfullscreenchange', atualizarBotoesTelaCheia);
+
+        // Manifesto gerado na hora: ao "instalar" / adicionar à tela inicial, abre em tela cheia
+        (function () {
+            try {
+                const base = location.href.split('#')[0];
+                const icone = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#10b981"/><path d="M128 176h232a24 24 0 0 1 24 24v168a24 24 0 0 1-24 24H152a24 24 0 0 1-24-24z" fill="#fff"/><path d="M128 176l200-56a16 16 0 0 1 20 15v41" fill="none" stroke="#fff" stroke-width="24" stroke-linejoin="round"/><circle cx="332" cy="284" r="20" fill="#10b981"/></svg>');
+                const manifesto = {
+                    name: 'Sistema Financeiro Pessoal', short_name: 'Finanças',
+                    start_url: base, scope: base.replace(/[^/]*$/, ''),
+                    display: 'fullscreen', display_override: ['fullscreen', 'standalone'],
+                    orientation: 'any', background_color: '#0f172a', theme_color: '#0f172a',
+                    icons: [{ src: icone, sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]
+                };
+                const link = document.createElement('link');
+                link.rel = 'manifest';
+                link.href = URL.createObjectURL(new Blob([JSON.stringify(manifesto)], { type: 'application/manifest+json' }));
+                document.head.appendChild(link);
+                const apple = document.createElement('link');
+                apple.rel = 'apple-touch-icon'; apple.href = icone;
+                document.head.appendChild(apple);
+            } catch (e) { /* navegador sem suporte: segue normal */ }
+        })();
+
+        // Esconde a barra inferior enquanto o teclado do celular está aberto
+        document.addEventListener('focusin', (e) => {
+            if (e.target.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea')) document.body.classList.add('teclado-aberto');
+        });
+        document.addEventListener('focusout', () => {
+            setTimeout(() => {
+                const a = document.activeElement;
+                if (!a || !a.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea')) document.body.classList.remove('teclado-aberto');
+            }, 50);
+        });
+
+        // Tabelas em formato de cartão no celular: cada célula recebe o nome da coluna
+        function rotularTabelaMobile(tabela) {
+            const titulos = Array.from(tabela.querySelectorAll('thead th')).map(th => th.textContent.trim());
+            tabela.querySelectorAll('tbody tr').forEach(tr => {
+                const celulas = Array.from(tr.children);
+                if (celulas.length <= 1) return;
+                celulas.forEach((td, i) => {
+                    let rotulo = titulos[i] || '';
+                    if (!rotulo && td.querySelector('input[type="checkbox"]')) rotulo = 'Selecionar';
+                    td.setAttribute('data-label', rotulo);
+                    if (rotulo === 'Ações') td.classList.add('celula-acoes');
+                });
+            });
+        }
+        document.querySelectorAll('table.tabela-mobile').forEach(tabela => {
+            rotularTabelaMobile(tabela);
+            const corpo = tabela.querySelector('tbody');
+            if (corpo) new MutationObserver(() => rotularTabelaMobile(tabela)).observe(corpo, { childList: true });
+        });
+
         function verificarSenha() {
             const senhaDigitada = document.getElementById('input-senha-acesso').value;
             let senhaSalva = db.senha || '1234';
@@ -1241,7 +1567,7 @@
                 senha: 'Alterar Senha do Sistema'
             };
             document.getElementById('page-title').innerText = titles[tabId] || 'Sistema';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            rolarParaTopo();
         }
 
         // =====================================================================
@@ -1381,7 +1707,7 @@
                 mf.aberto = true;
                 botao.setAttribute('aria-expanded', 'true');
                 const primeiro = painel.querySelector('[data-mf-busca]') || painel.querySelector('input[type="checkbox"]');
-                if (primeiro) primeiro.focus();
+                if (primeiro && !toqueEhPrincipal()) primeiro.focus();
             };
             mf.fechar = () => {
                 if (!mf.aberto) return;
@@ -1787,10 +2113,11 @@
                         responsive: false,
                         animation: false,
                         devicePixelRatio: 1,
-                        plugins: { legend: { position: 'bottom', labels: { font: { size: 24 } } } },
+                        color: '#475569',
+                        plugins: { legend: { position: 'bottom', labels: { color: '#475569', font: { size: 24 } } } },
                         scales: {
-                            x: { ticks: { font: { size: 22 } } },
-                            y: { beginAtZero: true, ticks: { font: { size: 22 }, callback: (v) => formatarMoeda(v) } }
+                            x: { ticks: { color: '#475569', font: { size: 22 } }, grid: { color: 'rgba(0,0,0,0.1)' }, border: { color: 'rgba(0,0,0,0.15)' } },
+                            y: { beginAtZero: true, ticks: { color: '#475569', font: { size: 22 }, callback: (v) => formatarMoeda(v) }, grid: { color: 'rgba(0,0,0,0.1)' }, border: { color: 'rgba(0,0,0,0.15)' } }
                         }
                     },
                     plugins: [{
@@ -2072,7 +2399,7 @@
             document.getElementById('form-banco-title').innerText = "Editar Banco";
             document.getElementById('btn-salvar-banco').innerText = "Atualizar";
             document.getElementById('btn-cancelar-banco').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            rolarParaTopo();
         }
 
         function cancelarEdicaoBanco() {
@@ -2112,7 +2439,7 @@
             document.getElementById('form-responsavel-title').innerText = "Editar Responsável";
             document.getElementById('btn-salvar-responsavel').innerText = "Atualizar";
             document.getElementById('btn-cancelar-responsavel').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            rolarParaTopo();
         }
 
         function cancelarEdicaoResponsavel() {
@@ -2163,7 +2490,7 @@
             document.getElementById('input-classificacao-despesa').value = td.classificacao;
             document.getElementById('form-despesa-title').innerText = "Editar Tipo de Despesa";
             document.getElementById('btn-salvar-despesa').innerText = "Atualizar";
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            rolarParaTopo();
         }
 
         document.getElementById('form-tipo-receita').addEventListener('submit', (e) => {
@@ -2387,7 +2714,7 @@
             document.getElementById('form-title').innerText = 'Editar Transação';
             document.getElementById('btn-salvar-tx').innerText = 'Atualizar Transação';
             document.getElementById('btn-cancelar-edicao').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            rolarParaTopo();
         }
 
         function cancelarEdicao() {
@@ -2690,15 +3017,15 @@
                 else if(t.status === 'fatura_aberta') statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Fatura Aberta</span>';
                 else if(t.status === 'fatura_fechada') statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">Fatura Fechada</span>';
                 
-                let classificacaoTag = t.classificacao ? `<span class="ml-1 px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] uppercase font-bold">${t.classificacao}</span>` : '';
+                let classificacaoTag = t.classificacao ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] uppercase font-bold">${t.classificacao}</span>` : '';
                 let recorrenteTag = '';
                 if (t.tipo === 'receita') {
                     const ativa = t.recorrente !== false;
                     recorrenteTag = ativa
-                        ? `<span class="ml-1 px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded text-[10px] uppercase font-bold whitespace-nowrap"><i class="fa-solid fa-rotate mr-0.5"></i>Recorrente</span>`
-                        : `<span class="ml-1 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] uppercase font-bold whitespace-nowrap"><i class="fa-solid fa-rotate-left mr-0.5"></i>Não recorrente</span>`;
+                        ? `<span class="px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded text-[10px] uppercase font-bold whitespace-nowrap"><i class="fa-solid fa-rotate mr-0.5"></i>Recorrente</span>`
+                        : `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] uppercase font-bold whitespace-nowrap"><i class="fa-solid fa-rotate-left mr-0.5"></i>Não recorrente</span>`;
                 }
-                let responsavelBadge = `<span class="tt-truncar inline-block align-middle max-w-[9rem] truncate bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium"><i class="fa-solid fa-user-tag mr-1 text-[10px]"></i>${escapeHtml(t.responsavel || 'Geral')}</span>`;
+                let responsavelBadge = `<span class="tt-truncar inline-block align-middle max-w-[9rem] md:max-w-[6rem] 2xl:max-w-[9rem] truncate bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium"><i class="fa-solid fa-user-tag mr-1 text-[10px]"></i>${escapeHtml(t.responsavel || 'Geral')}</span>`;
 
                 return `
                     <tr class="hover:bg-slate-50">
@@ -2706,14 +3033,14 @@
                             <input type="checkbox" value="${t.id}" onchange="atualizarContadorSelecionadas()" class="transacao-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
                         </td>
                         <td class="p-3 md:p-4">${dataFmt}</td>
-                        <td class="p-3 md:p-4 font-medium"><span class="tt-truncar block truncate max-w-[16rem] md:max-w-xs">${escapeHtml(t.descricao)}</span></td>
-                        <td class="p-3 md:p-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeColor}">${tipoLabel}</span> ${classificacaoTag}${recorrenteTag}</td>
-                        <td class="p-3 md:p-4"><span class="tt-truncar inline-block align-middle max-w-[10rem] truncate text-slate-600 bg-slate-100 px-2 py-1 rounded text-xs">${escapeHtml(t.categoria || 'Geral')}</span></td>
+                        <td class="p-3 md:p-4 font-medium"><span class="tt-truncar block truncate max-w-[16rem] md:max-w-[8rem] lg:max-w-[9.5rem] xl:max-w-[10.5rem] 2xl:max-w-[16rem]">${escapeHtml(t.descricao)}</span></td>
+                        <td class="p-3 md:p-4"><div class="flex flex-col items-end md:items-start gap-1"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${badgeColor}">${tipoLabel}</span>${classificacaoTag}${recorrenteTag}</div></td>
+                        <td class="p-3 md:p-4"><span class="tt-truncar inline-block align-middle max-w-[10rem] md:max-w-[6rem] 2xl:max-w-[10rem] truncate text-slate-600 bg-slate-100 px-2 py-1 rounded text-xs">${escapeHtml(t.categoria || 'Geral')}</span></td>
                         <td class="p-3 md:p-4">${responsavelBadge}</td>
-                        <td class="p-3 md:p-4"><span class="tt-truncar block truncate max-w-[10rem]">${escapeHtml(t.banco)}</span><span class="tt-truncar text-xs text-slate-400 block truncate max-w-[10rem]">${escapeHtml(t.pagamento)}</span></td>
-                        <td class="p-3 md:p-4">${statusBadge}</td>
-                        <td class="p-3 md:p-4 font-bold ${valorClasse}">${sinal}${formatarMoeda(t.valor)}</td>
-                        <td class="p-3 md:p-4 text-center space-x-2">
+                        <td class="p-3 md:p-4"><div class="min-w-0"><span class="tt-truncar block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.banco)}</span><span class="tt-truncar text-xs text-slate-400 block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.pagamento)}</span></div></td>
+                        <td class="p-3 md:p-4 celula-status">${statusBadge}</td>
+                        <td class="p-3 md:p-4 font-bold whitespace-nowrap ${valorClasse}">${sinal}${formatarMoeda(t.valor)}</td>
+                        <td class="p-3 md:p-4 text-center whitespace-nowrap space-x-2">
                             ${t.tipo === 'receita' ? `<button onclick="toggleRecorrenciaTransacao(${t.id})" class="${t.recorrente !== false ? 'text-amber-500 hover:text-amber-700' : 'text-slate-300 hover:text-amber-600'} cursor-pointer" title="${t.recorrente !== false ? 'Marcar como não recorrente (parar de projetar a partir daqui)' : 'Marcar como recorrente novamente'}"><i class="fa-solid fa-rotate"></i></button>` : ''}
                             ${t.tipo !== 'compensacao_fatura' ? `<button onclick="editarTransacao(${t.id})" class="text-slate-400 hover:text-indigo-600 cursor-pointer" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
                             <button onclick="excluirTransacao(${t.id})" class="text-slate-400 hover:text-rose-600 cursor-pointer" title="Excluir"><i class="fa-solid fa-trash"></i></button>
@@ -2961,11 +3288,11 @@
 
                 return `
                     <tr class="hover:bg-slate-50">
-                        <td class="p-3 md:p-4 font-medium text-slate-800"><span class="tt-truncar block truncate max-w-[16rem] md:max-w-xs">${escapeHtml(compra.descricao)}</span></td>
-                        <td class="p-3 md:p-4 text-slate-600"><span class="tt-truncar block truncate max-w-[10rem]"><i class="fa-solid fa-building-columns mr-1.5 text-indigo-500"></i>${escapeHtml(compra.banco)}</span></td>
+                        <td class="p-3 md:p-4 font-medium text-slate-800"><span class="tt-truncar block truncate max-w-[16rem] md:max-w-[10rem] lg:max-w-[13rem] 2xl:max-w-[18rem]">${escapeHtml(compra.descricao)}</span></td>
+                        <td class="p-3 md:p-4 text-slate-600"><span class="tt-truncar block truncate max-w-[10rem] md:max-w-[7rem] 2xl:max-w-[10rem]"><i class="fa-solid fa-building-columns mr-1.5 text-indigo-500"></i>${escapeHtml(compra.banco)}</span></td>
                         <td class="p-3 md:p-4"><span class="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold">${compra.totalParcelas}x</span></td>
-                        <td class="p-3 md:p-4"><span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold">${compra.pagas} pagas</span></td>
-                        <td class="p-3 md:p-4"><span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold">${compra.vencer} a vencer</span></td>
+                        <td class="p-3 md:p-4"><span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold whitespace-nowrap">${compra.pagas} pagas</span></td>
+                        <td class="p-3 md:p-4"><span class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold whitespace-nowrap">${compra.vencer} a vencer</span></td>
                         <td class="p-3 md:p-4 text-slate-700 font-semibold">${formatarMoeda(compra.valorParcela)}</td>
                         <td class="p-3 md:p-4 text-emerald-700 font-bold">${formatarMoeda(compra.valorPago)}</td>
                         <td class="p-3 md:p-4 text-amber-600 font-bold">${formatarMoeda(valorTotalVencer)}</td>
@@ -3279,16 +3606,16 @@
                             <td class="p-3 md:p-4 text-center">
                                 <input type="checkbox" value="${chaveAttr}" onchange="atualizarContadorProjecoes()" ${selecionadasAntes.has(p.chaveCustom) ? 'checked' : ''} class="projecao-checkbox w-4 h-4 accent-rose-600 cursor-pointer" title="Selecionar esta linha" aria-label="Selecionar linha">
                             </td>
-                            <td class="p-3 md:p-4 font-medium text-slate-800 capitalize"><span class="tt-truncar block truncate max-w-[11rem]"><i class="fa-regular fa-calendar mr-2 text-slate-400"></i>${escapeHtml(p.mesAnoLabel)}</span></td>
-                            <td class="p-3 md:p-4"><span class="tt-truncar block truncate max-w-[16rem] md:max-w-xs ${descClasse}">${descEscapada}</span></td>
+                            <td class="p-3 md:p-4 font-medium text-slate-800 capitalize"><span class="tt-truncar block truncate max-w-[11rem] md:max-w-[7.5rem] 2xl:max-w-[11rem]"><i class="fa-regular fa-calendar mr-1.5 text-slate-400"></i>${escapeHtml(p.mesAnoLabel)}</span></td>
+                            <td class="p-3 md:p-4"><span class="tt-truncar block truncate max-w-[16rem] md:max-w-[8rem] lg:max-w-[9.5rem] 2xl:max-w-[16rem] ${descClasse}">${descEscapada}</span></td>
                             <td class="p-3 md:p-4">${origemBadge}</td>
-                            <td class="p-3 md:p-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeColor}">${p.tipo.toUpperCase()}</span></td>
-                            <td class="p-3 md:p-4"><span class="tt-truncar inline-block align-middle max-w-[10rem] truncate text-slate-600 bg-slate-100 px-2 py-1 rounded text-xs">${escapeHtml(p.categoria)}</span></td>
-                            <td class="p-3 md:p-4"><span class="tt-truncar block truncate max-w-[9rem]">${escapeHtml(p.banco)}</span></td>
-                            <td class="p-3 md:p-4 text-slate-600">${formatarMoeda(p.valorBase)}</td>
-                            <td class="p-3 md:p-4 ${valorClasse}">${formatarMoeda(p.valorProjetado)}</td>
+                            <td class="p-3 md:p-4"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${badgeColor}">${p.tipo.toUpperCase()}</span></td>
+                            <td class="p-3 md:p-4"><span class="tt-truncar inline-block align-middle max-w-[10rem] md:max-w-[7rem] 2xl:max-w-[10rem] truncate text-slate-600 bg-slate-100 px-2 py-1 rounded text-xs">${escapeHtml(p.categoria)}</span></td>
+                            <td class="p-3 md:p-4"><span class="tt-truncar block truncate max-w-[9rem] md:max-w-[6.5rem] 2xl:max-w-[9rem]">${escapeHtml(p.banco)}</span></td>
+                            <td class="p-3 md:p-4 text-slate-600 whitespace-nowrap">${formatarMoeda(p.valorBase)}</td>
+                            <td class="p-3 md:p-4 whitespace-nowrap ${valorClasse}">${formatarMoeda(p.valorProjetado)}</td>
                             <td class="p-3 md:p-4 text-center">
-                                <div class="flex items-center justify-center gap-3">
+                                <div class="flex items-center justify-center gap-2.5">
                                     <button type="button" data-chave="${chaveAttr}" onclick="editarProjecao(this.dataset.chave)" class="text-slate-400 hover:text-indigo-600 cursor-pointer" title="Editar Descrição, Valor e Periodicidade" aria-label="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
                                     <button type="button" data-chave="${chaveAttr}" onclick="toggleExclusaoProjecao(this.dataset.chave, ${excluida ? 'false' : 'true'})" class="${excluida ? 'text-amber-500 hover:text-amber-700' : 'text-slate-400 hover:text-amber-600'} cursor-pointer" title="${excluida ? 'Voltar a considerar nos totais' : 'Ignorar nos totais (mantém a linha visível)'}" aria-label="${excluida ? 'Voltar a considerar nos totais' : 'Ignorar nos totais'}"><i class="fa-solid ${excluida ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
                                     <button type="button" data-chave="${chaveAttr}" onclick="excluirProjecao(this.dataset.chave)" class="text-rose-500 hover:text-rose-700 cursor-pointer" title="Excluir esta linha das projeções" aria-label="Excluir linha"><i class="fa-solid fa-trash"></i></button>
@@ -3491,11 +3818,11 @@
                 ? `<p class="text-sm text-slate-400 italic text-center py-8">Nenhum lançamento encontrado para este filtro.</p>`
                 : `<table class="w-full text-sm text-left">
                     <thead class="text-xs uppercase text-slate-500 border-b border-slate-200">
-                        <tr>${cabecalho.map((c, i) => `<th class="py-2 pr-3 font-semibold ${i === cabecalho.length - 1 ? 'text-right pr-0' : ''}">${c}</th>`).join('')}</tr>
+                        <tr>${cabecalho.map((c, i) => `<th class="py-2 pr-3 font-semibold whitespace-nowrap ${i === cabecalho.length - 1 ? 'text-right pr-0' : ''}">${c}</th>`).join('')}</tr>
                     </thead>
                     <tbody>
                         ${linhas.map(l => `<tr class="border-b border-slate-100 hover:bg-slate-50">
-                            ${celulas(l).map(c => `<td class="py-2.5 pr-3 text-slate-700">${escapeHtml(c)}</td>`).join('')}
+                            ${celulas(l).map((c, i) => `<td class="py-2.5 pr-3 text-slate-700"><span class="tt-truncar block truncate ${cabecalho[i] === 'Descrição' ? 'max-w-[11rem] sm:max-w-[16rem]' : cabecalho[i] === 'Data' ? '' : 'max-w-[7rem] sm:max-w-[9rem]'}">${escapeHtml(c)}</span></td>`).join('')}
                             <td class="py-2.5 text-right font-bold whitespace-nowrap ${corTexto}">${formatarMoeda(l.valor)}</td>
                         </tr>`).join('')}
                     </tbody>
@@ -3824,7 +4151,7 @@
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { fecharModalLancamentoCategoria(); fecharDetalheDashboard(); }
+            if (e.key === 'Escape') { fecharModalLancamentoCategoria(); fecharDetalheDashboard(); fecharDicaTelaCheia(); }
         });
 
         // =====================================================================
