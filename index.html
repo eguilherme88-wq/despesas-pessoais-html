@@ -706,7 +706,7 @@
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div>
                                 <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-chart-line mr-2 text-emerald-600"></i>Projeções de Receitas e Despesas</h3>
-                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos 3 meses anteriores ao mês atual (a partir do mês anterior). Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções. Compras no cartão de crédito Nubank entram no mês seguinte ao da compra (mês de vencimento da fatura): as compras do mês atual aparecem na projeção do próximo mês. Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
+                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos 3 meses anteriores ao mês atual (a partir do mês anterior). Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções. Compras no cartão de crédito entram no mês de vencimento da fatura, calculado pelo dia da virada cadastrado em Cadastros &gt; Bancos (sem virada cadastrada, o Nubank vence no mês seguinte e os demais no próprio mês). Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <button type="button" onclick="excluirProjecoesSelecionadas()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
@@ -833,7 +833,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 md:col-span-2">
                             <h3 id="form-banco-title" class="text-base font-bold text-slate-800 mb-4">Cadastrar Bancos e Saldo Inicial</h3>
-                            <form id="form-banco" class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+                            <form id="form-banco" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
                                 <input type="hidden" id="edit-index-banco" value="">
                                 <input type="text" id="input-banco" required placeholder="Ex: Nubank, Itaú" class="border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                                 <input type="number" step="0.01" id="input-saldo-banco" placeholder="Saldo Inicial (R$)" value="0" class="border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
@@ -842,11 +842,14 @@
                                     <option value="debito">Débito (Conta/Dinheiro)</option>
                                     <option value="credito">Crédito (Apenas Cartão)</option>
                                 </select>
+                                <input type="number" min="1" max="31" step="1" id="input-virada-banco" placeholder="Dia da virada (fechamento)" title="Dia em que a fatura do cartão fecha. Compras a partir deste dia vão para a fatura seguinte." class="campo-cartao border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                <input type="number" min="1" max="31" step="1" id="input-vencimento-banco" placeholder="Dia do vencimento (opcional)" title="Dia em que a fatura vence. Se ficar em branco, considera que a fatura vence no mês seguinte ao fechamento." class="campo-cartao border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                                 <div class="flex gap-2">
                                     <button type="button" id="btn-cancelar-banco" onclick="cancelarEdicaoBanco()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer">Cancelar</button>
                                     <button type="submit" id="btn-salvar-banco" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer">Adicionar Banco</button>
                                 </div>
                             </form>
+                            <p class="campo-cartao text-[11px] text-slate-500 -mt-2 mb-4">Dia da virada: compras feitas a partir desse dia entram na fatura seguinte. Ele define em que mês cada compra no cartão aparece nas Projeções. Deixe em branco para manter o comportamento padrão.</p>
                             <ul id="lista-bancos" class="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden"></ul>
                         </div>
 
@@ -2372,22 +2375,39 @@
             const val = document.getElementById('input-banco').value.trim();
             const saldoIni = parseFloat(document.getElementById('input-saldo-banco').value) || 0;
             const tipoBanco = document.getElementById('input-tipo-banco').value;
+            const lerDia = (id) => {
+                const n = parseInt(document.getElementById(id).value, 10);
+                return (tipoBanco !== 'debito' && n >= 1 && n <= 31) ? n : null;
+            };
+            const diaVirada = lerDia('input-virada-banco');
+            const diaVencimento = diaVirada ? lerDia('input-vencimento-banco') : null;
+            const dadosBanco = { nome: val, saldoInicial: saldoIni, tipoBanco: tipoBanco, diaVirada: diaVirada, diaVencimento: diaVencimento };
 
             if (val) {
                 if (editIndex !== "") {
-                    db.bancos[editIndex] = { nome: val, saldoInicial: saldoIni, tipoBanco: tipoBanco };
+                    db.bancos[editIndex] = dadosBanco;
                     cancelarEdicaoBanco();
                 } else {
                     if (!db.bancos.some(b => b.nome === val)) {
-                        db.bancos.push({ nome: val, saldoInicial: saldoIni, tipoBanco: tipoBanco });
+                        db.bancos.push(dadosBanco);
                         document.getElementById('input-banco').value = '';
                         document.getElementById('input-saldo-banco').value = '0';
                         document.getElementById('input-tipo-banco').value = 'ambos';
+                        document.getElementById('input-virada-banco').value = '';
+                        document.getElementById('input-vencimento-banco').value = '';
+                        atualizarCamposCartaoBanco();
                     }
                 }
                 saveData();
             }
         });
+
+        // Os campos de virada/vencimento só fazem sentido para bancos com cartão de crédito
+        function atualizarCamposCartaoBanco() {
+            const ehDebito = document.getElementById('input-tipo-banco').value === 'debito';
+            document.querySelectorAll('#form-banco .campo-cartao, #form-banco + .campo-cartao').forEach(el => el.classList.toggle('hidden', ehDebito));
+        }
+        document.getElementById('input-tipo-banco').addEventListener('change', atualizarCamposCartaoBanco);
 
         function editarBancoCadastro(index) {
             const b = db.bancos[index];
@@ -2396,6 +2416,9 @@
             document.getElementById('input-banco').value = b.nome;
             document.getElementById('input-saldo-banco').value = b.saldoInicial;
             document.getElementById('input-tipo-banco').value = b.tipoBanco || 'ambos';
+            document.getElementById('input-virada-banco').value = b.diaVirada || '';
+            document.getElementById('input-vencimento-banco').value = b.diaVencimento || '';
+            atualizarCamposCartaoBanco();
             document.getElementById('form-banco-title').innerText = "Editar Banco";
             document.getElementById('btn-salvar-banco').innerText = "Atualizar";
             document.getElementById('btn-cancelar-banco').classList.remove('hidden');
@@ -2407,6 +2430,7 @@
             document.getElementById('edit-index-banco').value = '';
             document.getElementById('input-saldo-banco').value = '0';
             document.getElementById('input-tipo-banco').value = 'ambos';
+            atualizarCamposCartaoBanco();
             document.getElementById('form-banco-title').innerText = "Cadastrar Bancos e Saldo Inicial";
             document.getElementById('btn-salvar-banco').innerText = "Adicionar Banco";
             document.getElementById('btn-cancelar-banco').classList.add('hidden');
@@ -2876,6 +2900,7 @@
                         <strong>${b.nome}</strong> 
                         <span class="text-xs text-slate-400 ml-1">(${formatarMoeda(b.saldoInicial)})</span>
                         <span class="ml-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] uppercase font-bold">${tipoBancoLabels[b.tipoBanco || 'ambos']}</span>
+                        ${b.diaVirada && b.tipoBanco !== 'debito' ? `<span class="ml-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px] font-bold" title="Dia da virada da fatura${b.diaVencimento ? ' e dia do vencimento' : ''}"><i class="fa-solid fa-rotate mr-1"></i>Virada dia ${b.diaVirada}${b.diaVencimento ? ` · vence dia ${b.diaVencimento}` : ''}</span>` : ''}
                     </span> 
                     <div class="space-x-2 flex-shrink-0">
                         <button onclick="editarBancoCadastro(${i})" class="text-slate-400 hover:text-indigo-600 cursor-pointer" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -3327,9 +3352,30 @@
 
         // Cartões cuja fatura vence no mês seguinte ao da compra: as compras entram nas projeções um mês depois.
         const BANCOS_FATURA_MES_SEGUINTE = ['nubank'];
+        // Mês (YYYY-MM) em que a fatura de uma compra no cartão vence.
+        // Com dia da virada cadastrado: compras a partir da virada vão para a fatura seguinte;
+        // a fatura vence no mesmo mês do fechamento se o vencimento for depois da virada, senão no mês seguinte.
+        // Sem virada cadastrada mantém o comportamento antigo (Nubank: mês seguinte; demais: mesmo mês).
+        function mesFaturaDaCompra(t) {
+            const mesCompra = (t && t.data) ? t.data.slice(0, 7) : '';
+            if (!t || t.pagamento !== 'Cartão de Crédito' || !t.banco || !mesCompra) return mesCompra;
+            const banco = db.bancos.find(b => b.nome === t.banco);
+            const virada = parseInt(banco?.diaVirada, 10);
+            if (banco && banco.tipoBanco !== 'debito' && virada >= 1 && virada <= 31) {
+                const [ano, mes] = mesCompra.split('-').map(Number);
+                const ultimoDiaMes = new Date(ano, mes, 0).getDate();
+                const dia = parseInt(t.data.slice(8, 10), 10) || 1;
+                const mesFechamento = dia >= Math.min(virada, ultimoDiaMes) ? somarMeses(mesCompra, 1) : mesCompra;
+                const venc = parseInt(banco.diaVencimento, 10);
+                const venceNoMesmoMes = venc >= 1 && venc <= 31 && venc > virada;
+                return venceNoMesmoMes ? mesFechamento : somarMeses(mesFechamento, 1);
+            }
+            return BANCOS_FATURA_MES_SEGUINTE.includes(String(t.banco).trim().toLocaleLowerCase('pt-BR'))
+                ? somarMeses(mesCompra, 1) : mesCompra;
+        }
         function vaiParaFaturaSeguinte(t) {
-            if (!t || t.pagamento !== 'Cartão de Crédito' || !t.banco) return false;
-            return BANCOS_FATURA_MES_SEGUINTE.includes(String(t.banco).trim().toLocaleLowerCase('pt-BR'));
+            if (!t || !t.data) return false;
+            return mesFaturaDaCompra(t) > t.data.slice(0, 7);
         }
         function somarMeses(anoMes, n) {
             const [a, m] = anoMes.split('-').map(Number);
@@ -3415,16 +3461,22 @@
                 const ultimaTx = item.transacoes.reduce((max, tx) => (!max || tx.data > max.data) ? tx : max, null);
                 const recorrenteAtiva = !ultimaTx || ultimaTx.recorrente !== false;
 
-                // Compras deste item feitas no mês atual no cartão Nubank vencem no próximo mês:
-                // o primeiro mês projetado usa o valor real lançado (quando houver) em vez da média.
-                const txFaturaMesAtual = item.tipo === 'despesa'
-                    ? item.transacoes.filter(tx => tx.data && tx.data.startsWith(mesAtualKey) && vaiParaFaturaSeguinte(tx))
-                    : [];
-                const valorFaturaMesAtual = txFaturaMesAtual.reduce((acc, tx) => acc + (Number(tx.valor) || 0), 0);
+                // Compras deste item já lançadas no cartão cuja fatura vence em um mês futuro (conforme a virada do cartão):
+                // nesse mês de vencimento a projeção usa o valor real lançado em vez da média.
+                const valorFaturaPorMes = {};
+                if (item.tipo === 'despesa') {
+                    item.transacoes.forEach(tx => {
+                        if (!tx.data || tx.data.slice(0, 7) > mesAtualKey) return;
+                        const mesVenc = mesFaturaDaCompra(tx);
+                        if (mesVenc > mesAtualKey) valorFaturaPorMes[mesVenc] = (valorFaturaPorMes[mesVenc] || 0) + (Number(tx.valor) || 0);
+                    });
+                }
+                const temFaturaReal = Object.values(valorFaturaPorMes).some(v => v > 0);
 
-                if ((media3M > 0 || valorFaturaMesAtual > 0) && recorrenteAtiva) {
+                if ((media3M > 0 || temFaturaReal) && recorrenteAtiva) {
                     for (let m = 0; m < 12; m++) {
-                        if (m % intervaloMeses !== 0) continue; // respeita a periodicidade escolhida
+                        const mesLoopKey = somarMeses(mesAtualKey, m + 1);
+                        if (m % intervaloMeses !== 0 && !(valorFaturaPorMes[mesLoopKey] > 0)) continue; // respeita a periodicidade escolhida
 
                         let dProj = new Date(dataSub.getFullYear(), dataSub.getMonth() + m, 1);
                         let anoP = dProj.getFullYear();
@@ -3434,8 +3486,8 @@
 
                         // Verificar se há valor/descrição customizados salvos para esta projeção
                         let chaveCustom = `${anoMesKey}_${item.idChave}`;
-                        const usaFaturaReal = m === 0 && valorFaturaMesAtual > 0;
-                        const valorBaseMes = usaFaturaReal ? valorFaturaMesAtual : media3M;
+                        const usaFaturaReal = valorFaturaPorMes[anoMesKey] > 0;
+                        const valorBaseMes = usaFaturaReal ? valorFaturaPorMes[anoMesKey] : media3M;
                         if (valorBaseMes <= 0) continue;
                         let valorFinal = db.projecoesEditadas && db.projecoesEditadas[chaveCustom] !== undefined 
                             ? db.projecoesEditadas[chaveCustom] 
@@ -3470,8 +3522,8 @@
                 if (!match || t.tipo !== 'despesa') return;
                 if (categoriaExcluidaDeProjecao(t.categoria)) return; // Ignora transferências entre contas e cartão de crédito
                 if (!t.data) return;
-                // No cartão Nubank a parcela vence no mês seguinte ao lançamento
-                const anoMesKey = vaiParaFaturaSeguinte(t) ? somarMeses(t.data.slice(0, 7), 1) : t.data.slice(0, 7);
+                // No cartão a parcela vence no mês da fatura (conforme a virada cadastrada)
+                const anoMesKey = mesFaturaDaCompra(t);
                 if (anoMesKey <= mesAtualKey) return; // desconsidera o mês atual e os anteriores
                 const [, descBase, numParcelaStr, totalParcelasStr] = match;
                 const chaveCustom = `parcela_${t.id}`;
@@ -3504,13 +3556,14 @@
                 });
             });
 
-            // Compras avulsas (não fixas e não parceladas) feitas no mês atual no cartão Nubank:
-            // entram na projeção do mês seguinte, quando a fatura vence, com o valor real lançado.
-            const mesFatura = somarMeses(mesAtualKey, 1);
-            const labelMesFatura = new Date(mesFatura + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            // Compras avulsas (não fixas e não parceladas) no cartão ainda não pagas cuja fatura vence em mês futuro:
+            // entram na projeção do mês de vencimento da fatura (conforme a virada), com o valor real lançado.
             db.transacoes.forEach(t => {
-                if (t.tipo !== 'despesa' || !t.data || !t.data.startsWith(mesAtualKey)) return;
-                if (!vaiParaFaturaSeguinte(t) || t.status === 'pago') return;
+                if (t.tipo !== 'despesa' || !t.data || t.data.slice(0, 7) > mesAtualKey) return;
+                if (t.status === 'pago') return;
+                const mesFatura = mesFaturaDaCompra(t);
+                if (mesFatura <= mesAtualKey) return; // fatura já venceu ou vence no mês atual
+                const labelMesFatura = new Date(mesFatura + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
                 if (REGEX_PARCELA.test(t.descricao) || t.classificacao === 'fixa') return; // já tratadas acima
                 if (categoriaExcluidaDeProjecao(t.categoria)) return;
 
