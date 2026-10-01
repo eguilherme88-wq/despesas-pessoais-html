@@ -706,7 +706,7 @@
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div>
                                 <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-chart-line mr-2 text-emerald-600"></i>Projeções de Receitas e Despesas</h3>
-                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos últimos 3 meses. Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções. Compras no cartão de crédito Nubank entram no mês seguinte ao da compra (mês de vencimento da fatura): as compras do mês atual aparecem na projeção do próximo mês. Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
+                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos 3 meses anteriores ao mês atual (a partir do mês anterior). Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções. Compras no cartão de crédito Nubank entram no mês seguinte ao da compra (mês de vencimento da fatura): as compras do mês atual aparecem na projeção do próximo mês. Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <button type="button" onclick="excluirProjecoesSelecionadas()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
@@ -2917,7 +2917,7 @@
                 <li class="flex justify-between items-center p-3 text-sm bg-white gap-2"><span class="truncate min-w-0 tt-truncar"><i class="fa-solid fa-file-invoice-dollar mr-2 text-slate-400"></i>${escapeHtml(imp)}</span> <div class="space-x-2 flex-shrink-0"><button onclick="abrirLancamentoPorItemCadastro('impostos', ${i})" class="text-emerald-600 hover:text-emerald-800 cursor-pointer" title="Novo lançamento nesta categoria"><i class="fa-solid fa-plus"></i></button><button onclick="removerItem('impostos', ${i})" class="text-rose-500 hover:text-rose-700 cursor-pointer"><i class="fa-solid fa-trash"></i></button></div></li>
             `).join('');
 
-            preencherOpcoesMes('filtro-mes', db.transacoes.map(t => (t.data || '').slice(0, 7)), 'Todos os Meses', true);
+            preencherOpcoesMes('filtro-mes', db.transacoes.map(t => (t.data || '').slice(0, 7)), 'Todos os Meses', false);
 
             const fMes = lerFiltro('filtro-mes');
             const fBanco = lerFiltro('filtro-banco');
@@ -3380,13 +3380,14 @@
             
             let listaProjecoesCalculada = [];
 
-            // Para cada item fixo/recorrente, calcular a média dos últimos 3 meses e gerar conforme a periodicidade definida
+            // Para cada item fixo/recorrente, calcular a média dos 3 meses FECHADOS anteriores ao mês atual
+            // (começa sempre no mês anterior ao atual; o mês corrente, ainda incompleto, não entra na média)
             Object.values(fixasMap).forEach(item => {
                 let somaValores3M = 0;
                 let mesesContados = 0;
 
                 for (let i = 1; i <= 3; i++) {
-                    let dRef = new Date(dataSub.getFullYear(), dataSub.getMonth() - i, 1);
+                    let dRef = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
                     let anoRef = dRef.getFullYear();
                     let mesRef = String(dRef.getMonth() + 1).padStart(2, '0');
                     let periodoStr = `${anoRef}-${mesRef}`;
