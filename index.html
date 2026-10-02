@@ -501,6 +501,11 @@
                                     <option value="aberto">Em Aberto</option>
                                 </select>
                             </div>
+                            <div id="tx-div-competencia" style="display:none;">
+                                <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-credit-card mr-1 text-indigo-500"></i>Competência (mês da fatura)</label>
+                                <input type="month" id="tx-competencia" oninput="this.dataset.manual='1'; atualizarDicaCompetencia('tx')" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                                <p id="tx-competencia-dica" class="text-[11px] text-slate-500 mt-1"></p>
+                            </div>
                             <div id="div-parcelas" class="sm:col-span-2 md:col-span-1">
                                 <label id="tx-parcelas-label" class="block text-xs font-semibold text-slate-600 mb-1">Número de Parcelas</label>
                                 <input type="number" min="1" max="120" id="tx-parcelas" value="1" required oninput="atualizarPreviewParcelas()" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
@@ -706,7 +711,7 @@
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div>
                                 <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-chart-line mr-2 text-emerald-600"></i>Projeções de Receitas e Despesas</h3>
-                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos 3 meses anteriores ao mês atual (a partir do mês anterior). Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções. Compras no cartão de crédito entram no mês de vencimento da fatura, calculado pelo dia da virada cadastrado em Cadastros &gt; Bancos (sem virada cadastrada, o Nubank vence no mês seguinte e os demais no próprio mês). Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
+                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos 3 meses anteriores ao mês atual (a partir do mês anterior). Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual entra nas projeções (usando o valor real quando o item já foi lançado no mês); a categoria Juros não entra. Compras no cartão de crédito entram no mês de competência informado no lançamento; sem competência informada, no mês de vencimento da fatura calculado pelo dia da virada cadastrado em Cadastros &gt; Bancos (sem virada cadastrada, o Nubank vence no mês seguinte e os demais no próprio mês). Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <button type="button" onclick="excluirProjecoesSelecionadas()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
@@ -1081,6 +1086,11 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Status</label>
                     <select id="lc-status" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white"></select>
+                </div>
+                <div id="lc-div-competencia" class="sm:col-span-2" style="display:none;">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-credit-card mr-1 text-indigo-500"></i>Competência (mês da fatura)</label>
+                    <input type="month" id="lc-competencia" oninput="this.dataset.manual='1'; atualizarDicaCompetencia('lc')" class="w-full sm:w-60 border border-indigo-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                    <p id="lc-competencia-dica" class="text-[11px] text-slate-500 mt-1"></p>
                 </div>
                 <div id="lc-div-parcelas" class="sm:col-span-2">
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Número de Parcelas</label>
@@ -2577,7 +2587,58 @@
         function atualizarStatusOpcoes() {
             const pagamento = document.getElementById('tx-pagamento').value;
             document.getElementById('tx-status').innerHTML = montarOpcoesStatus(pagamento);
+            atualizarCampoCompetencia('tx');
         }
+
+        // ---------- Competência (mês da fatura) das compras no cartão de crédito ----------
+        // prefixo: 'tx' (formulário principal) ou 'lc' (lançamento por categoria)
+        function competenciaSugerida(prefixo) {
+            const data = document.getElementById(`${prefixo}-data`).value;
+            if (!data) return '';
+            return mesFaturaDaCompra({ pagamento: 'Cartão de Crédito', banco: document.getElementById(`${prefixo}-banco`).value, data });
+        }
+        function rotuloMes(anoMes) {
+            if (!/^\d{4}-\d{2}$/.test(anoMes || '')) return '';
+            return new Date(anoMes + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        }
+        function atualizarDicaCompetencia(prefixo) {
+            const dica = document.getElementById(`${prefixo}-competencia-dica`);
+            const input = document.getElementById(`${prefixo}-competencia`);
+            if (!dica || !input) return;
+            const sugerida = competenciaSugerida(prefixo);
+            if (input.value && sugerida && input.value !== sugerida) {
+                dica.innerHTML = `Lançada na fatura de <b>${rotuloMes(input.value)}</b> (pela data/virada seria ${rotuloMes(sugerida)}).`;
+            } else {
+                dica.textContent = input.value ? `Entra na fatura e nas Projeções de ${rotuloMes(input.value)}. Altere se for de outro mês.` : 'Informe o mês da fatura desta despesa.';
+            }
+        }
+        // Mostra o campo só para Cartão de Crédito e sugere o mês pela data + virada do cartão
+        // (a sugestão não sobrescreve um mês escolhido manualmente, a menos que forcar = true)
+        function atualizarCampoCompetencia(prefixo, forcar = false) {
+            const div = document.getElementById(`${prefixo}-div-competencia`);
+            const input = document.getElementById(`${prefixo}-competencia`);
+            if (!div || !input) return;
+            const ehCartao = document.getElementById(`${prefixo}-pagamento`).value === 'Cartão de Crédito';
+            div.style.display = ehCartao ? 'block' : 'none';
+            input.required = ehCartao;
+            if (!ehCartao) return;
+            if (forcar || !input.value || input.dataset.manual !== '1') {
+                input.value = competenciaSugerida(prefixo) || '';
+                input.dataset.manual = '';
+            }
+            atualizarDicaCompetencia(prefixo);
+        }
+        function lerCompetencia(prefixo) {
+            if (document.getElementById(`${prefixo}-pagamento`).value !== 'Cartão de Crédito') return undefined;
+            const v = document.getElementById(`${prefixo}-competencia`).value;
+            return /^\d{4}-\d{2}$/.test(v) ? v : (competenciaSugerida(prefixo) || undefined);
+        }
+        ['tx', 'lc'].forEach(prefixo => {
+            ['data', 'banco'].forEach(campo => {
+                const el = document.getElementById(`${prefixo}-${campo}`);
+                if (el) el.addEventListener('change', () => atualizarCampoCompetencia(prefixo));
+            });
+        });
 
         // ---------- utilitários de lançamento ----------
         const REGEX_SUFIXO_PARCELA = /\s*\((\d+)\/(\d+)\)$/;
@@ -2630,7 +2691,8 @@
                     classificacao: classificacao,
                     data: adicionarMeses(d.dataStr, i),
                     status: d.status,
-                    recorrente: d.tipo === 'receita' ? (d.recorrente !== false) : undefined
+                    recorrente: d.tipo === 'receita' ? (d.recorrente !== false) : undefined,
+                    competencia: (d.pagamento === 'Cartão de Crédito' && d.competencia) ? somarMeses(d.competencia, i) : undefined
                 });
             }
         }
@@ -2674,7 +2736,8 @@
                 dataStr: document.getElementById('tx-data').value,
                 status: document.getElementById('tx-status').value,
                 parcelas: Math.max(1, parseInt(document.getElementById('tx-parcelas').value) || 1),
-                recorrente: document.getElementById('tx-recorrente') ? document.getElementById('tx-recorrente').checked : true
+                recorrente: document.getElementById('tx-recorrente') ? document.getElementById('tx-recorrente').checked : true,
+                competencia: lerCompetencia('tx')
             };
 
             if (idEdicao) {
@@ -2692,6 +2755,7 @@
                     tx.data = dados.dataStr;
                     tx.status = dados.status;
                     tx.recorrente = dados.tipo === 'receita' ? dados.recorrente : undefined;
+                    if (dados.competencia) tx.competencia = dados.competencia; else delete tx.competencia;
 
                     // Parcelar ao editar: esta transação vira a 1/N e as demais são criadas nos meses seguintes
                     if (!sufixo && dados.parcelas > 1) {
@@ -2707,6 +2771,7 @@
                 document.getElementById('tx-data').valueAsDate = new Date();
                 document.getElementById('tx-parcelas').value = '1';
                 document.getElementById('tx-recorrente').checked = true;
+                document.getElementById('tx-competencia').dataset.manual = '';
                 atualizarStatusOpcoes();
                 atualizarCategoriasSelect();
                 atualizarPreviewParcelas();
@@ -2734,6 +2799,14 @@
             configurarCampoParcelas(true, REGEX_SUFIXO_PARCELA.test(tx.descricao));
             document.getElementById('tx-recorrente').checked = tx.recorrente !== false;
             atualizarVisibilidadeRecorrente();
+            const inputComp = document.getElementById('tx-competencia');
+            if (tx.pagamento === 'Cartão de Crédito' && tx.competencia) {
+                inputComp.value = tx.competencia;
+                inputComp.dataset.manual = '1';
+                atualizarCampoCompetencia('tx');
+            } else {
+                atualizarCampoCompetencia('tx', true);
+            }
 
             document.getElementById('form-title').innerText = 'Editar Transação';
             document.getElementById('btn-salvar-tx').innerText = 'Atualizar Transação';
@@ -2747,6 +2820,7 @@
             document.getElementById('tx-data').valueAsDate = new Date();
             document.getElementById('tx-parcelas').value = '1';
             document.getElementById('tx-recorrente').checked = true;
+            document.getElementById('tx-competencia').dataset.manual = '';
             document.getElementById('form-title').innerText = 'Nova Transação';
             document.getElementById('btn-salvar-tx').innerText = 'Salvar Transação';
             document.getElementById('btn-cancelar-edicao').classList.add('hidden');
@@ -2783,7 +2857,7 @@
             let qtdBaixadas = 0;
 
             db.transacoes.forEach(t => {
-                if (t.banco === cartao && t.pagamento === 'Cartão de Crédito' && t.data?.startsWith(mesCompetencia)) {
+                if (t.banco === cartao && t.pagamento === 'Cartão de Crédito' && (t.competencia || t.data?.slice(0, 7)) === mesCompetencia) {
                     if (t.status !== 'pago' && t.status !== 'fatura_fechada') {
                         valorTotalFatura += t.valor;
                         t.status = 'fatura_fechada';
@@ -3062,7 +3136,7 @@
                         <td class="p-3 md:p-4"><div class="flex flex-col items-end md:items-start gap-1"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${badgeColor}">${tipoLabel}</span>${classificacaoTag}${recorrenteTag}</div></td>
                         <td class="p-3 md:p-4"><span class="tt-truncar inline-block align-middle max-w-[10rem] md:max-w-[6rem] 2xl:max-w-[10rem] truncate text-slate-600 bg-slate-100 px-2 py-1 rounded text-xs">${escapeHtml(t.categoria || 'Geral')}</span></td>
                         <td class="p-3 md:p-4">${responsavelBadge}</td>
-                        <td class="p-3 md:p-4"><div class="min-w-0"><span class="tt-truncar block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.banco)}</span><span class="tt-truncar text-xs text-slate-400 block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.pagamento)}</span></div></td>
+                        <td class="p-3 md:p-4"><div class="min-w-0"><span class="tt-truncar block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.banco)}</span><span class="tt-truncar text-xs text-slate-400 block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.pagamento)}</span>${t.pagamento === 'Cartão de Crédito' && t.data ? `<span class="text-[10px] text-indigo-500 font-semibold block whitespace-nowrap" title="Competência (mês da fatura)">Fatura ${mesFaturaDaCompra(t).split('-').reverse().join('/')}</span>` : ''}</div></td>
                         <td class="p-3 md:p-4 celula-status">${statusBadge}</td>
                         <td class="p-3 md:p-4 font-bold whitespace-nowrap ${valorClasse}">${sinal}${formatarMoeda(t.valor)}</td>
                         <td class="p-3 md:p-4 text-center whitespace-nowrap space-x-2">
@@ -3358,6 +3432,7 @@
         // Sem virada cadastrada mantém o comportamento antigo (Nubank: mês seguinte; demais: mesmo mês).
         function mesFaturaDaCompra(t) {
             const mesCompra = (t && t.data) ? t.data.slice(0, 7) : '';
+            if (t && t.pagamento === 'Cartão de Crédito' && /^\d{4}-\d{2}$/.test(t.competencia || '')) return t.competencia; // competência informada no lançamento
             if (!t || t.pagamento !== 'Cartão de Crédito' || !t.banco || !mesCompra) return mesCompra;
             const banco = db.bancos.find(b => b.nome === t.banco);
             const virada = parseInt(banco?.diaVirada, 10);
@@ -3463,26 +3538,26 @@
 
                 // Compras deste item já lançadas no cartão cuja fatura vence em um mês futuro (conforme a virada do cartão):
                 // nesse mês de vencimento a projeção usa o valor real lançado em vez da média.
+                // No mês atual também usa o valor real se o item já foi lançado (ex.: salário de outubro já recebido).
                 const valorFaturaPorMes = {};
-                if (item.tipo === 'despesa') {
-                    item.transacoes.forEach(tx => {
-                        if (!tx.data || tx.data.slice(0, 7) > mesAtualKey) return;
-                        const mesVenc = mesFaturaDaCompra(tx);
-                        if (mesVenc > mesAtualKey) valorFaturaPorMes[mesVenc] = (valorFaturaPorMes[mesVenc] || 0) + (Number(tx.valor) || 0);
-                    });
-                }
+                item.transacoes.forEach(tx => {
+                    if (!tx.data || tx.data.slice(0, 7) > mesAtualKey) return;
+                    const mesVenc = item.tipo === 'despesa' ? mesFaturaDaCompra(tx) : tx.data.slice(0, 7);
+                    if (mesVenc >= mesAtualKey) valorFaturaPorMes[mesVenc] = (valorFaturaPorMes[mesVenc] || 0) + (Number(tx.valor) || 0);
+                });
                 const temFaturaReal = Object.values(valorFaturaPorMes).some(v => v > 0);
 
                 if ((media3M > 0 || temFaturaReal) && recorrenteAtiva) {
-                    for (let m = 0; m < 12; m++) {
-                        const mesLoopKey = somarMeses(mesAtualKey, m + 1);
-                        if (m % intervaloMeses !== 0 && !(valorFaturaPorMes[mesLoopKey] > 0)) continue; // respeita a periodicidade escolhida
+                    // m = 0 é o mês atual; m = 1..12 são os 12 meses seguintes
+                    for (let m = 0; m <= 12; m++) {
+                        const mesLoopKey = somarMeses(mesAtualKey, m);
+                        const temReal = valorFaturaPorMes[mesLoopKey] > 0;
+                        // respeita a periodicidade escolhida (contada a partir do mês seguinte, como antes)
+                        if (m === 0 ? (intervaloMeses !== 1 && !temReal) : ((m - 1) % intervaloMeses !== 0 && !temReal)) continue;
 
-                        let dProj = new Date(dataSub.getFullYear(), dataSub.getMonth() + m, 1);
-                        let anoP = dProj.getFullYear();
-                        let mesP = String(dProj.getMonth() + 1).padStart(2, '0');
-                        let anoMesKey = `${anoP}-${mesP}`;
-                        let mesAnoLabel = dProj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                        let anoMesKey = mesLoopKey;
+                        let [anoP, mesP] = anoMesKey.split('-');
+                        let mesAnoLabel = new Date(anoMesKey + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
                         // Verificar se há valor/descrição customizados salvos para esta projeção
                         let chaveCustom = `${anoMesKey}_${item.idChave}`;
@@ -3524,7 +3599,7 @@
                 if (!t.data) return;
                 // No cartão a parcela vence no mês da fatura (conforme a virada cadastrada)
                 const anoMesKey = mesFaturaDaCompra(t);
-                if (anoMesKey <= mesAtualKey) return; // desconsidera o mês atual e os anteriores
+                if (anoMesKey < mesAtualKey) return; // desconsidera os meses anteriores (o mês atual entra)
                 const [, descBase, numParcelaStr, totalParcelasStr] = match;
                 const chaveCustom = `parcela_${t.id}`;
 
@@ -3560,9 +3635,9 @@
             // entram na projeção do mês de vencimento da fatura (conforme a virada), com o valor real lançado.
             db.transacoes.forEach(t => {
                 if (t.tipo !== 'despesa' || !t.data || t.data.slice(0, 7) > mesAtualKey) return;
-                if (t.status === 'pago') return;
+                if (t.status === 'pago' || t.pagamento !== 'Cartão de Crédito') return;
                 const mesFatura = mesFaturaDaCompra(t);
-                if (mesFatura <= mesAtualKey) return; // fatura já venceu ou vence no mês atual
+                if (mesFatura < mesAtualKey) return; // fatura já venceu (a do mês atual entra)
                 const labelMesFatura = new Date(mesFatura + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
                 if (REGEX_PARCELA.test(t.descricao) || t.classificacao === 'fixa') return; // já tratadas acima
                 if (categoriaExcluidaDeProjecao(t.categoria)) return;
@@ -4115,6 +4190,8 @@
             document.getElementById('lc-valor').value = '';
             document.getElementById('lc-parcelas').value = '1';
             document.getElementById('lc-data').value = hojeLocalISO();
+            document.getElementById('lc-competencia').value = '';
+            document.getElementById('lc-competencia').dataset.manual = '';
 
             if (chaveInicial && Array.from(selCat.options).some(o => o.value === chaveInicial)) selCat.value = chaveInicial;
             aoTrocarCategoriaLC();
@@ -4171,6 +4248,7 @@
         function atualizarStatusLC() {
             const pagamento = document.getElementById('lc-pagamento').value;
             document.getElementById('lc-status').innerHTML = montarOpcoesStatus(pagamento);
+            atualizarCampoCompetencia('lc');
         }
 
         function atualizarPreviewLC() {
@@ -4198,7 +4276,8 @@
                 dataStr: document.getElementById('lc-data').value,
                 status: document.getElementById('lc-status').value,
                 parcelas: tipo === 'despesa' ? Math.max(1, parseInt(document.getElementById('lc-parcelas').value) || 1) : 1,
-                recorrente: tipo === 'receita' ? document.getElementById('lc-recorrente').checked : undefined
+                recorrente: tipo === 'receita' ? document.getElementById('lc-recorrente').checked : undefined,
+                competencia: lerCompetencia('lc')
             });
             fecharModalLancamentoCategoria();
             saveData();
