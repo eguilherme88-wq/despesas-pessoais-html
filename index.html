@@ -501,8 +501,8 @@
                                     <option value="aberto">Em Aberto</option>
                                 </select>
                             </div>
-                            <div id="tx-div-competencia" style="display:none;">
-                                <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-credit-card mr-1 text-indigo-500"></i>Competência (mês da fatura)</label>
+                            <div id="tx-div-competencia">
+                                <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-calendar-check mr-1 text-indigo-500"></i>Competência (mês)</label>
                                 <input type="month" id="tx-competencia" oninput="this.dataset.manual='1'; atualizarDicaCompetencia('tx')" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
                                 <p id="tx-competencia-dica" class="text-[11px] text-slate-500 mt-1"></p>
                             </div>
@@ -568,10 +568,14 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-500 mb-1">Filtrar por Mês</label>
                                     <select id="filtro-mes" multiple onchange="initApp()" class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none bg-white"><option value="">Todos os Meses</option></select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">Filtrar por Competência</label>
+                                    <select id="filtro-competencia" multiple onchange="initApp()" class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none bg-white"><option value="">Todas as Competências</option></select>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-500 mb-1">Filtrar por Banco</label>
@@ -1087,8 +1091,8 @@
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Status</label>
                     <select id="lc-status" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white"></select>
                 </div>
-                <div id="lc-div-competencia" class="sm:col-span-2" style="display:none;">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-credit-card mr-1 text-indigo-500"></i>Competência (mês da fatura)</label>
+                <div id="lc-div-competencia" class="sm:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-calendar-check mr-1 text-indigo-500"></i>Competência (mês)</label>
                     <input type="month" id="lc-competencia" oninput="this.dataset.manual='1'; atualizarDicaCompetencia('lc')" class="w-full sm:w-60 border border-indigo-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
                     <p id="lc-competencia-dica" class="text-[11px] text-slate-500 mt-1"></p>
                 </div>
@@ -1590,7 +1594,7 @@
         // =====================================================================
         const _multiFiltros = {};
         const MULTI_FILTROS_IDS = [
-            'filtro-mes', 'filtro-banco', 'filtro-responsavel', 'filtro-tipo', 'filtro-categoria', 'filtro-status',
+            'filtro-mes', 'filtro-competencia', 'filtro-banco', 'filtro-responsavel', 'filtro-tipo', 'filtro-categoria', 'filtro-status',
             'proj-filtro-mes', 'proj-filtro-tipo', 'proj-filtro-categoria', 'proj-filtro-banco', 'proj-filtro-responsavel',
             'parc-filtro-banco', 'parc-filtro-situacao',
             'dashboard-responsavel',
@@ -1806,7 +1810,7 @@
         document.getElementById('dashboard-mes').value = new Date().toLocaleDateString('sv-SE').slice(0, 7);
 
         function limparFiltros() {
-            ['filtro-mes', 'filtro-banco', 'filtro-responsavel', 'filtro-tipo', 'filtro-status', 'filtro-categoria'].forEach(limparFiltro);
+            ['filtro-mes', 'filtro-competencia', 'filtro-banco', 'filtro-responsavel', 'filtro-tipo', 'filtro-status', 'filtro-categoria'].forEach(limparFiltro);
             document.getElementById('filtro-busca').value = '';
             initApp();
         }
@@ -1849,6 +1853,7 @@
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
             const fMes = lerFiltro('filtro-mes');
+            const fComp = lerFiltro('filtro-competencia');
             const fBanco = lerFiltro('filtro-banco');
             const fResp = lerFiltro('filtro-responsavel');
             const fTipo = lerFiltro('filtro-tipo');
@@ -1863,6 +1868,7 @@
             const mesTexto = m => { const [ano, mes] = m.split('-'); return `${nomesMeses[parseInt(mes, 10) - 1]}/${ano}`; };
             const filtrosAtivos = [];
             if (fMes.length) filtrosAtivos.push(`Mês: ${fMes.sort().map(mesTexto).join(', ')}`);
+            if (fComp.length) filtrosAtivos.push(`Competência: ${fComp.sort().map(mesTexto).join(', ')}`);
             if (fBanco.length) filtrosAtivos.push(`Banco: ${fBanco.join(', ')}`);
             if (fResp.length) filtrosAtivos.push(`Responsável: ${fResp.join(', ')}`);
             if (fTipo.length) filtrosAtivos.push(`Tipo: ${fTipo.map(v => tipoLabelsMap[v] || v).join(', ')}`);
@@ -2590,12 +2596,14 @@
             atualizarCampoCompetencia('tx');
         }
 
-        // ---------- Competência (mês da fatura) das compras no cartão de crédito ----------
+        // ---------- Competência (mês de referência) do lançamento, em qualquer tipo de pagamento ----------
+        // Cartão de crédito: sugere o mês da fatura (data + virada do cartão). Demais pagamentos: o mês da data.
         // prefixo: 'tx' (formulário principal) ou 'lc' (lançamento por categoria)
         function competenciaSugerida(prefixo) {
             const data = document.getElementById(`${prefixo}-data`).value;
             if (!data) return '';
-            return mesFaturaDaCompra({ pagamento: 'Cartão de Crédito', banco: document.getElementById(`${prefixo}-banco`).value, data });
+            const pagamento = document.getElementById(`${prefixo}-pagamento`).value;
+            return mesFaturaDaCompra({ pagamento, banco: document.getElementById(`${prefixo}-banco`).value, data });
         }
         function rotuloMes(anoMes) {
             if (!/^\d{4}-\d{2}$/.test(anoMes || '')) return '';
@@ -2606,22 +2614,22 @@
             const input = document.getElementById(`${prefixo}-competencia`);
             if (!dica || !input) return;
             const sugerida = competenciaSugerida(prefixo);
+            const ehCartao = document.getElementById(`${prefixo}-pagamento`).value === 'Cartão de Crédito';
+            const base = ehCartao ? 'pela data/virada do cartão' : 'pela data';
             if (input.value && sugerida && input.value !== sugerida) {
-                dica.innerHTML = `Lançada na fatura de <b>${rotuloMes(input.value)}</b> (pela data/virada seria ${rotuloMes(sugerida)}).`;
+                dica.innerHTML = `Competência <b>${rotuloMes(input.value)}</b> (${base} seria ${rotuloMes(sugerida)}).`;
             } else {
-                dica.textContent = input.value ? `Entra na fatura e nas Projeções de ${rotuloMes(input.value)}. Altere se for de outro mês.` : 'Informe o mês da fatura desta despesa.';
+                dica.textContent = input.value
+                    ? `Conta em ${rotuloMes(input.value)}${ehCartao ? ' (fatura)' : ''} nas Projeções e no filtro de competência. Altere se for de outro mês.`
+                    : 'Informe o mês de competência deste lançamento.';
             }
         }
-        // Mostra o campo só para Cartão de Crédito e sugere o mês pela data + virada do cartão
+        // Sugere o mês pela data (e pela virada, no cartão)
         // (a sugestão não sobrescreve um mês escolhido manualmente, a menos que forcar = true)
         function atualizarCampoCompetencia(prefixo, forcar = false) {
-            const div = document.getElementById(`${prefixo}-div-competencia`);
             const input = document.getElementById(`${prefixo}-competencia`);
-            if (!div || !input) return;
-            const ehCartao = document.getElementById(`${prefixo}-pagamento`).value === 'Cartão de Crédito';
-            div.style.display = ehCartao ? 'block' : 'none';
-            input.required = ehCartao;
-            if (!ehCartao) return;
+            if (!input) return;
+            input.required = true;
             if (forcar || !input.value || input.dataset.manual !== '1') {
                 input.value = competenciaSugerida(prefixo) || '';
                 input.dataset.manual = '';
@@ -2629,7 +2637,6 @@
             atualizarDicaCompetencia(prefixo);
         }
         function lerCompetencia(prefixo) {
-            if (document.getElementById(`${prefixo}-pagamento`).value !== 'Cartão de Crédito') return undefined;
             const v = document.getElementById(`${prefixo}-competencia`).value;
             return /^\d{4}-\d{2}$/.test(v) ? v : (competenciaSugerida(prefixo) || undefined);
         }
@@ -2692,7 +2699,7 @@
                     data: adicionarMeses(d.dataStr, i),
                     status: d.status,
                     recorrente: d.tipo === 'receita' ? (d.recorrente !== false) : undefined,
-                    competencia: (d.pagamento === 'Cartão de Crédito' && d.competencia) ? somarMeses(d.competencia, i) : undefined
+                    competencia: d.competencia ? somarMeses(d.competencia, i) : undefined
                 });
             }
         }
@@ -2800,7 +2807,7 @@
             document.getElementById('tx-recorrente').checked = tx.recorrente !== false;
             atualizarVisibilidadeRecorrente();
             const inputComp = document.getElementById('tx-competencia');
-            if (tx.pagamento === 'Cartão de Crédito' && tx.competencia) {
+            if (tx.competencia) {
                 inputComp.value = tx.competencia;
                 inputComp.dataset.manual = '1';
                 atualizarCampoCompetencia('tx');
@@ -3017,8 +3024,10 @@
             `).join('');
 
             preencherOpcoesMes('filtro-mes', db.transacoes.map(t => (t.data || '').slice(0, 7)), 'Todos os Meses', false);
+            preencherOpcoesMes('filtro-competencia', db.transacoes.map(t => t.data ? mesFaturaDaCompra(t) : ''), 'Todas as Competências', false);
 
             const fMes = lerFiltro('filtro-mes');
+            const fComp = lerFiltro('filtro-competencia');
             const fBanco = lerFiltro('filtro-banco');
             const fResp = lerFiltro('filtro-responsavel');
             const fTipo = lerFiltro('filtro-tipo');
@@ -3031,6 +3040,7 @@
             
             const transacoesFiltradas = db.transacoes.filter(t => {
                 if (fMes.length && !fMes.includes((t.data || '').slice(0, 7))) return false;
+                if (fComp.length && !(t.data && fComp.includes(mesFaturaDaCompra(t)))) return false;
                 if (fBanco.length && !fBanco.includes(t.banco)) return false;
                 if (fResp.length && !fResp.includes(t.responsavel)) return false;
                 if (fTipo.length && !fTipo.includes(t.tipo)) return false;
@@ -3136,7 +3146,7 @@
                         <td class="p-3 md:p-4"><div class="flex flex-col items-end md:items-start gap-1"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${badgeColor}">${tipoLabel}</span>${classificacaoTag}${recorrenteTag}</div></td>
                         <td class="p-3 md:p-4"><span class="tt-truncar inline-block align-middle max-w-[10rem] md:max-w-[6rem] 2xl:max-w-[10rem] truncate text-slate-600 bg-slate-100 px-2 py-1 rounded text-xs">${escapeHtml(t.categoria || 'Geral')}</span></td>
                         <td class="p-3 md:p-4">${responsavelBadge}</td>
-                        <td class="p-3 md:p-4"><div class="min-w-0"><span class="tt-truncar block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.banco)}</span><span class="tt-truncar text-xs text-slate-400 block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.pagamento)}</span>${t.pagamento === 'Cartão de Crédito' && t.data ? `<span class="text-[10px] text-indigo-500 font-semibold block whitespace-nowrap" title="Competência (mês da fatura)">Fatura ${mesFaturaDaCompra(t).split('-').reverse().join('/')}</span>` : ''}</div></td>
+                        <td class="p-3 md:p-4"><div class="min-w-0"><span class="tt-truncar block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.banco)}</span><span class="tt-truncar text-xs text-slate-400 block truncate max-w-[10rem] md:max-w-[6.5rem] 2xl:max-w-[10rem]">${escapeHtml(t.pagamento)}</span>${t.data ? `<span class="text-[10px] text-indigo-500 font-semibold block whitespace-nowrap" title="Competência (mês de referência)">Comp. ${mesFaturaDaCompra(t).split('-').reverse().join('/')}</span>` : ''}</div></td>
                         <td class="p-3 md:p-4 celula-status">${statusBadge}</td>
                         <td class="p-3 md:p-4 font-bold whitespace-nowrap ${valorClasse}">${sinal}${formatarMoeda(t.valor)}</td>
                         <td class="p-3 md:p-4 text-center whitespace-nowrap space-x-2">
@@ -3432,7 +3442,7 @@
         // Sem virada cadastrada mantém o comportamento antigo (Nubank: mês seguinte; demais: mesmo mês).
         function mesFaturaDaCompra(t) {
             const mesCompra = (t && t.data) ? t.data.slice(0, 7) : '';
-            if (t && t.pagamento === 'Cartão de Crédito' && /^\d{4}-\d{2}$/.test(t.competencia || '')) return t.competencia; // competência informada no lançamento
+            if (t && /^\d{4}-\d{2}$/.test(t.competencia || '')) return t.competencia; // competência informada no lançamento (qualquer pagamento)
             if (!t || t.pagamento !== 'Cartão de Crédito' || !t.banco || !mesCompra) return mesCompra;
             const banco = db.bancos.find(b => b.nome === t.banco);
             const virada = parseInt(banco?.diaVirada, 10);
