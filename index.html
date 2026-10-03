@@ -2025,6 +2025,65 @@
             doc.setTextColor(100, 116, 139);
             doc.text(`Total de transações: ${linhas.length}`, 40, finalY);
 
+            // ---- Resumos no final: total por Responsável e por Categoria ----
+            const agruparTotais = (chaveDe) => {
+                const mapa = {};
+                ordenadas.forEach((t, i) => {
+                    const chave = chaveDe(t) || 'Geral';
+                    if (!mapa[chave]) mapa[chave] = { receitas: 0, despesas: 0, qtd: 0 };
+                    const valor = Number(t.valor) || 0;
+                    if (ehEntrada[i]) mapa[chave].receitas += valor;
+                    else if (t.tipo === 'despesa' || (t.tipo === 'compensacao_fatura' && t.pagamento !== 'Compensação')) mapa[chave].despesas += valor;
+                    mapa[chave].qtd++;
+                });
+                return Object.entries(mapa).sort((a, b) => (b[1].despesas - a[1].despesas) || (b[1].receitas - a[1].receitas) || a[0].localeCompare(b[0], 'pt-BR'));
+            };
+            const alturaPagina = doc.internal.pageSize.getHeight();
+            let yResumo = finalY + 24;
+            const desenharResumo = (titulo, nomeColuna, grupos) => {
+                if (yResumo > alturaPagina - 110) { doc.addPage(); yResumo = 50; }
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(30, 41, 59);
+                doc.text(titulo, 40, yResumo);
+                doc.setFont(undefined, 'normal');
+                const totalQtd = grupos.reduce((s, [, g]) => s + g.qtd, 0);
+                doc.autoTable({
+                    head: [[nomeColuna, 'Qtd.', 'Receitas', 'Despesas', 'Saldo', '% das Despesas']],
+                    body: grupos.map(([nome, g]) => [
+                        nome,
+                        String(g.qtd),
+                        formatarMoeda(g.receitas),
+                        formatarMoeda(g.despesas),
+                        formatarMoeda(g.receitas - g.despesas),
+                        totalDespesas > 0 ? `${((g.despesas / totalDespesas) * 100).toFixed(1).replace('.', ',')}%` : '-'
+                    ]),
+                    foot: [['Total', String(totalQtd), formatarMoeda(totalReceitas), formatarMoeda(totalDespesas), formatarMoeda(saldo), totalDespesas > 0 ? '100%' : '-']],
+                    startY: yResumo + 8,
+                    styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
+                    headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+                    footStyles: { fillColor: [226, 232, 240], textColor: [30, 41, 59], fontStyle: 'bold' },
+                    alternateRowStyles: { fillColor: [248, 250, 252] },
+                    columnStyles: { 1: { halign: 'center', cellWidth: 50 }, 2: { halign: 'right', cellWidth: 110 }, 3: { halign: 'right', cellWidth: 110 }, 4: { halign: 'right', fontStyle: 'bold', cellWidth: 110 }, 5: { halign: 'right', cellWidth: 90 } },
+                    margin: { left: 40, right: 40 },
+                    showFoot: 'lastPage',
+                    didParseCell: (data) => {
+                        if (data.column.index >= 1) data.cell.styles.halign = data.column.index === 1 ? 'center' : 'right';
+                        if (data.section === 'head') return;
+                        if (data.column.index === 2) data.cell.styles.textColor = VERDE;
+                        if (data.column.index === 3) data.cell.styles.textColor = VERMELHO;
+                        if (data.column.index === 4) {
+                            const linha = data.section === 'foot' ? null : grupos[data.row.index];
+                            const valorSaldo = linha ? linha[1].receitas - linha[1].despesas : saldo;
+                            data.cell.styles.textColor = valorSaldo < 0 ? VERMELHO : (valorSaldo > 0 ? VERDE : [30, 41, 59]);
+                        }
+                    }
+                });
+                yResumo = doc.lastAutoTable.finalY + 28;
+            };
+            desenharResumo('Total por Responsável', 'Responsável', agruparTotais(t => t.responsavel));
+            desenharResumo('Total por Categoria', 'Categoria', agruparTotais(t => t.categoria));
+
             const nomeArquivo = `historico_transacoes_${new Date().toISOString().slice(0, 10)}.pdf`;
             doc.save(nomeArquivo);
         }
