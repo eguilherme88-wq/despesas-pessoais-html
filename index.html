@@ -2923,7 +2923,8 @@
             let qtdBaixadas = 0;
 
             db.transacoes.forEach(t => {
-                if (t.banco === cartao && t.pagamento === 'Cartão de Crédito' && (t.competencia || t.data?.slice(0, 7)) === mesCompetencia) {
+                // Baixa pela competência (mesma regra da coluna "Comp." e do filtro), não pela data do lançamento.
+                if (t.banco === cartao && t.pagamento === 'Cartão de Crédito' && t.data && mesFaturaDaCompra(t) === mesCompetencia) {
                     if (t.status !== 'pago' && t.status !== 'fatura_fechada') {
                         valorTotalFatura += t.valor;
                         t.status = 'fatura_fechada';
@@ -2933,7 +2934,7 @@
             });
 
             if (qtdBaixadas === 0) {
-                alert('Nenhuma compra pendente encontrada para este cartão neste mês.');
+                alert(`Nenhuma compra pendente encontrada para este cartão na competência ${mesCompetencia.split('-').reverse().join('/')}.`);
                 return;
             }
 
