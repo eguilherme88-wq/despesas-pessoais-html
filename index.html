@@ -964,6 +964,15 @@
             <input type="hidden" id="modal-proj-idchave">
 
             <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1" for="modal-proj-mes">Mês de Referência</label>
+                <div class="flex gap-2">
+                    <input type="month" id="modal-proj-mes" class="flex-1 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <button type="button" id="modal-proj-mes-restaurar" onclick="restaurarMesProjecaoModal()" title="Voltar ao mês original" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 rounded-lg text-sm cursor-pointer"><i class="fa-solid fa-rotate-left"></i></button>
+                </div>
+                <p id="modal-proj-mes-dica" class="text-[11px] text-slate-500 mt-1"></p>
+            </div>
+
+            <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1">Descrição</label>
                 <input type="text" id="modal-proj-descricao" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
@@ -3787,6 +3796,18 @@
                 });
             });
 
+            // Mês de referência alterado pelo usuário em uma linha específica (move a linha para outro mês)
+            const mesesEditados = db.projecoesMesesEditados || {};
+            listaProjecoesCalculada.forEach(p => {
+                p.mesOriginal = p.dataOrdenacao;
+                const novoMes = mesesEditados[p.chaveCustom];
+                if (novoMes && /^\d{4}-\d{2}$/.test(novoMes) && novoMes !== p.dataOrdenacao) {
+                    p.dataOrdenacao = novoMes;
+                    p.mesAnoLabel = new Date(novoMes + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                    p.detalhe = `Movida de ${rotuloMesAno(p.mesOriginal)}${p.detalhe ? ' · ' + p.detalhe : ''}`;
+                }
+            });
+
             // Banco e responsável alterados pelo usuário (a alteração do mês vale mais que a de "todos os meses")
             const bancosEditados = db.projecoesBancosEditados || {};
             const respEditados = db.projecoesResponsaveisEditados || {};
@@ -4170,6 +4191,14 @@
             document.getElementById('modal-proj-descricao').value = p.descricao;
             document.getElementById('modal-proj-valor').value = p.valorProjetado.toFixed(2);
             document.getElementById('modal-proj-titulo-mes').innerText = p.mesAnoLabel;
+            const inputMes = document.getElementById('modal-proj-mes');
+            inputMes.value = p.dataOrdenacao;
+            inputMes.dataset.original = p.mesOriginal || p.dataOrdenacao;
+            const movida = (p.mesOriginal || p.dataOrdenacao) !== p.dataOrdenacao;
+            document.getElementById('modal-proj-mes-restaurar').classList.toggle('hidden', !movida);
+            document.getElementById('modal-proj-mes-dica').textContent = movida
+                ? `Movida do mês original ${rotuloMesAno(p.mesOriginal)}. Altera só esta linha.`
+                : 'Altera só esta linha (os demais meses do item continuam iguais).';
 
             const opcoesSelect = (lista, atual) => {
                 const itens = [...lista];
@@ -4207,6 +4236,11 @@
             modal.classList.remove('flex');
         }
 
+        function restaurarMesProjecaoModal() {
+            const inputMes = document.getElementById('modal-proj-mes');
+            inputMes.value = inputMes.dataset.original || '';
+        }
+
         function salvarModalProjecao() {
             const chaveCustom = document.getElementById('modal-proj-chave').value;
             const idChave = document.getElementById('modal-proj-idchave').value;
@@ -4222,6 +4256,16 @@
                 alert('Valor inválido digitado.');
                 return;
             }
+            const inputMes = document.getElementById('modal-proj-mes');
+            const novoMes = inputMes.value;
+            if (!/^\d{4}-\d{2}$/.test(novoMes)) {
+                alert('Informe um mês de referência válido.');
+                return;
+            }
+            // Mês de referência desta linha: guarda só quando difere do mês calculado originalmente
+            if (!db.projecoesMesesEditados) db.projecoesMesesEditados = {};
+            if (novoMes === inputMes.dataset.original) delete db.projecoesMesesEditados[chaveCustom];
+            else db.projecoesMesesEditados[chaveCustom] = novoMes;
 
             if (!db.projecoesEditadas) db.projecoesEditadas = {};
             if (!db.projecoesDescricoesEditadas) db.projecoesDescricoesEditadas = {};
