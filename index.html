@@ -718,7 +718,7 @@
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div>
                                 <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-chart-line mr-2 text-emerald-600"></i>Projeções de Receitas e Despesas</h3>
-                                <p class="text-xs text-slate-500 mt-0.5">Fixas/recorrentes pela média dos 3 meses anteriores ao mês atual (a partir do mês anterior). Parceladas projetadas nos meses correspondentes com o valor real da parcela. O mês atual e a categoria Juros não entram nas projeções. Compras no cartão de crédito entram no mês de competência informado no lançamento; sem competência informada, no mês de vencimento da fatura calculado pelo dia da virada cadastrado em Cadastros &gt; Bancos (sem virada cadastrada, o Nubank vence no mês seguinte e os demais no próprio mês). Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
+                                <p class="text-xs text-slate-500 mt-0.5">Projeções a partir do mês atual (12 meses). Fixas/recorrentes pela média dos 3 meses anteriores ao mês atual (a partir do mês anterior); se já houver lançamento com competência no mês, usa o valor real. Parceladas projetadas nos meses correspondentes com o valor real da parcela. A categoria Juros não entra nas projeções. Compras no cartão de crédito entram no mês de competência informado no lançamento; sem competência informada, no mês de vencimento da fatura calculado pelo dia da virada cadastrado em Cadastros &gt; Bancos (sem virada cadastrada, o Nubank vence no mês seguinte e os demais no próprio mês). Receitas marcadas como "não recorrente" no lançamento mais recente da categoria deixam de ser projetadas a partir do mês seguinte.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <button type="button" onclick="excluirProjecoesSelecionadas()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
@@ -3588,7 +3588,7 @@
             });
 
             const hoje = new Date();
-            let dataSub = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+            let dataSub = new Date(hoje.getFullYear(), hoje.getMonth(), 1); // projeções começam no mês atual
             const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
             
             let listaProjecoesCalculada = [];
@@ -3628,21 +3628,22 @@
                 const ultimaTx = item.transacoes.reduce((max, tx) => (!max || tx.data > max.data) ? tx : max, null);
                 const recorrenteAtiva = !ultimaTx || ultimaTx.recorrente !== false;
 
-                // Compras deste item já lançadas no cartão cuja fatura vence em um mês futuro (conforme a virada do cartão):
-                // nesse mês de vencimento a projeção usa o valor real lançado em vez da média.
+                // Lançamentos reais deste item cuja competência é o mês atual ou um mês futuro
+                // (no cartão, conforme a virada): nesses meses a projeção usa o valor real lançado em vez da média.
+                // Se o item ainda não foi lançado no mês atual, o mês atual usa a média.
                 const valorFaturaPorMes = {};
-                if (item.tipo === 'despesa') {
-                    item.transacoes.forEach(tx => {
-                        if (!tx.data || tx.data.slice(0, 7) > mesAtualKey) return;
-                        const mesVenc = mesFaturaDaCompra(tx);
-                        if (mesVenc > mesAtualKey) valorFaturaPorMes[mesVenc] = (valorFaturaPorMes[mesVenc] || 0) + (Number(tx.valor) || 0);
-                    });
-                }
+                item.transacoes.forEach(tx => {
+                    if (!tx.data || tx.data.slice(0, 7) > mesAtualKey) return;
+                    const mesVenc = mesFaturaDaCompra(tx);
+                    if (mesVenc < mesAtualKey) return;
+                    if (item.tipo !== 'despesa' && mesVenc !== mesAtualKey) return;
+                    valorFaturaPorMes[mesVenc] = (valorFaturaPorMes[mesVenc] || 0) + (Number(tx.valor) || 0);
+                });
                 const temFaturaReal = Object.values(valorFaturaPorMes).some(v => v > 0);
 
                 if ((media3M > 0 || temFaturaReal) && recorrenteAtiva) {
                     for (let m = 0; m < 12; m++) {
-                        const mesLoopKey = somarMeses(mesAtualKey, m + 1);
+                        const mesLoopKey = somarMeses(mesAtualKey, m);
                         if (m % intervaloMeses !== 0 && !(valorFaturaPorMes[mesLoopKey] > 0)) continue; // respeita a periodicidade escolhida
 
                         let dProj = new Date(dataSub.getFullYear(), dataSub.getMonth() + m, 1);
@@ -3682,7 +3683,7 @@
                 }
             });
 
-            // Projetar despesas PARCELADAS nos meses correspondentes (a partir do PRÓXIMO mês; o mês atual é desconsiderado),
+            // Projetar despesas PARCELADAS nos meses correspondentes (a partir do mês atual),
             // usando o valor real de cada parcela (sem cálculo de média).
             db.transacoes.forEach(t => {
                 const match = t.descricao.match(REGEX_PARCELA);
@@ -3691,7 +3692,7 @@
                 if (!t.data) return;
                 // No cartão a parcela vence no mês da fatura (conforme a virada cadastrada)
                 const anoMesKey = mesFaturaDaCompra(t);
-                if (anoMesKey <= mesAtualKey) return; // desconsidera o mês atual e os anteriores
+                if (anoMesKey < mesAtualKey) return; // desconsidera os meses anteriores ao atual
                 const [, descBase, numParcelaStr, totalParcelasStr] = match;
                 const chaveCustom = `parcela_${t.id}`;
 
@@ -3723,13 +3724,14 @@
                 });
             });
 
-            // Compras avulsas (não fixas e não parceladas) no cartão ainda não pagas cuja fatura vence em mês futuro:
+            // Compras avulsas (não fixas e não parceladas) no cartão ainda não pagas cuja fatura vence no mês atual ou em mês futuro:
             // entram na projeção do mês de vencimento da fatura (conforme a virada), com o valor real lançado.
             db.transacoes.forEach(t => {
                 if (t.tipo !== 'despesa' || !t.data || t.data.slice(0, 7) > mesAtualKey) return;
                 if (t.status === 'pago') return;
                 const mesFatura = mesFaturaDaCompra(t);
-                if (mesFatura <= mesAtualKey) return; // fatura já venceu ou vence no mês atual
+                if (mesFatura < mesAtualKey) return; // fatura de mês anterior
+                if (mesFatura === mesAtualKey && t.pagamento !== 'Cartão de Crédito') return; // no mês atual, só compras no cartão (fatura do mês)
                 const labelMesFatura = new Date(mesFatura + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
                 if (REGEX_PARCELA.test(t.descricao) || t.classificacao === 'fixa') return; // já tratadas acima
                 if (categoriaExcluidaDeProjecao(t.categoria)) return;
