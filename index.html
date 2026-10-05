@@ -538,7 +538,10 @@
                                 <input type="month" id="fatura-mes" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
                             </div>
                             <div>
-                                <button type="button" onclick="pagarFaturaCartao()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Pagar Fatura</button>
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="pagarFaturaCartao()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Pagar Fatura</button>
+                                    <button type="button" onclick="reabrirFaturaCartao()" title="Volta as compras desta competência para Fatura Aberta" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-2.5 rounded-lg text-sm transition cursor-pointer"><i class="fa-solid fa-rotate-left mr-1"></i>Reabrir</button>
+                                </div>
                             </div>
                         </div>
                         <p class="text-xs text-slate-500 mt-3">Mantém as compras no histórico com status Fatura Fechada. Não é gerado lançamento de compensação; o débito na conta bancária pode ser registrado separadamente.</p>
@@ -2910,6 +2913,13 @@
             saveData();
         }
 
+        // Compras do cartão cuja competência (mesma regra da coluna "Comp." e do filtro) é o mês informado.
+        // Usa só a competência; a data do lançamento não é considerada.
+        function comprasDaFatura(cartao, mesCompetencia) {
+            return db.transacoes.filter(t =>
+                t.banco === cartao && t.pagamento === 'Cartão de Crédito' && t.data && mesFaturaDaCompra(t) === mesCompetencia);
+        }
+
         function pagarFaturaCartao() {
             const cartao = document.getElementById('fatura-cartao').value;
             const mesCompetencia = document.getElementById('fatura-mes').value;
@@ -2918,27 +2928,39 @@
                 alert('Preencha todos os campos para o pagamento da fatura.');
                 return;
             }
+            const rotulo = mesCompetencia.split('-').reverse().join('/');
+            const pendentes = comprasDaFatura(cartao, mesCompetencia).filter(t => t.status !== 'pago' && t.status !== 'fatura_fechada');
 
-            let valorTotalFatura = 0;
-            let qtdBaixadas = 0;
-
-            db.transacoes.forEach(t => {
-                // Baixa pela competência (mesma regra da coluna "Comp." e do filtro), não pela data do lançamento.
-                if (t.banco === cartao && t.pagamento === 'Cartão de Crédito' && t.data && mesFaturaDaCompra(t) === mesCompetencia) {
-                    if (t.status !== 'pago' && t.status !== 'fatura_fechada') {
-                        valorTotalFatura += t.valor;
-                        t.status = 'fatura_fechada';
-                        qtdBaixadas++;
-                    }
-                }
-            });
-
-            if (qtdBaixadas === 0) {
-                alert(`Nenhuma compra pendente encontrada para este cartão na competência ${mesCompetencia.split('-').reverse().join('/')}.`);
+            if (pendentes.length === 0) {
+                alert(`Nenhuma compra pendente encontrada para ${cartao} na competência ${rotulo}.`);
                 return;
             }
+            const valorTotalFatura = pendentes.reduce((s, t) => s + (Number(t.valor) || 0), 0);
+            if (!confirm(`Fechar a fatura ${cartao} da competência ${rotulo}?\n\n${pendentes.length} compra(s), total de ${formatarMoeda(valorTotalFatura)}.`)) return;
 
-            alert(`Fatura registrada! ${qtdBaixadas} compra(s) mantida(s) no histórico como Fatura Fechada (total de ${formatarMoeda(valorTotalFatura)}).`);
+            pendentes.forEach(t => { t.status = 'fatura_fechada'; });
+            alert(`Fatura registrada! ${pendentes.length} compra(s) da competência ${rotulo} mantida(s) no histórico como Fatura Fechada (total de ${formatarMoeda(valorTotalFatura)}).`);
+            saveData();
+        }
+
+        // Desfaz o fechamento: volta para Fatura Aberta as compras fechadas da competência informada.
+        function reabrirFaturaCartao() {
+            const cartao = document.getElementById('fatura-cartao').value;
+            const mesCompetencia = document.getElementById('fatura-mes').value;
+            if (!cartao || !mesCompetencia) {
+                alert('Selecione o cartão e a competência a reabrir.');
+                return;
+            }
+            const rotulo = mesCompetencia.split('-').reverse().join('/');
+            const fechadas = comprasDaFatura(cartao, mesCompetencia).filter(t => t.status === 'fatura_fechada');
+            if (fechadas.length === 0) {
+                alert(`Nenhuma compra com Fatura Fechada para ${cartao} na competência ${rotulo}.`);
+                return;
+            }
+            const total = fechadas.reduce((s, t) => s + (Number(t.valor) || 0), 0);
+            if (!confirm(`Reabrir a fatura ${cartao} da competência ${rotulo}?\n\n${fechadas.length} compra(s), total de ${formatarMoeda(total)}, voltarão para Fatura Aberta.`)) return;
+            fechadas.forEach(t => { t.status = 'fatura_aberta'; });
+            alert(`${fechadas.length} compra(s) da competência ${rotulo} voltaram para Fatura Aberta.`);
             saveData();
         }
 
