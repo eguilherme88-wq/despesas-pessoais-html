@@ -196,6 +196,8 @@
         // Dispara o carregamento inicial assim que o Firebase conectar
         window.carregarDadosFirestore();
     </script>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 </head>
 <body class="bg-gray-50 font-sans text-gray-800 pb-20 md:pb-0">
 
@@ -340,6 +342,7 @@
                     <h1 id="page-title" class="text-base sm:text-lg md:text-xl font-bold text-slate-800 truncate">Dashboard</h1>
                 </div>
                 <div class="flex items-center space-x-2 md:space-x-3 flex-shrink-0">
+                    <button id="instalar-app" type="button" hidden onclick="instalarAppCelular()" style="background:#059669;color:white;border:0;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap" aria-label="Instalar aplicativo"><i class="fa-solid fa-download" aria-hidden="true"></i> Instalar app</button>
                     <span class="text-xs md:text-sm text-slate-500 hidden lg:inline"><i class="fa-regular fa-calendar-days mr-2"></i><span id="current-date"></span></span>
                     <button type="button" onclick="alternarTema()" class="btn-tema bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer" title="Tema escuro" aria-label="Tema escuro"><i class="fa-solid fa-moon"></i><span class="rotulo-tema hidden sm:inline ml-1">Escuro</span></button>
                     <button type="button" onclick="alternarTelaCheia()" class="btn-tela-cheia so-navegador bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer" title="Tela cheia" aria-label="Tela cheia"><i class="fa-solid fa-expand"></i><span class="rotulo-tela-cheia hidden sm:inline ml-1">Tela cheia</span></button>
@@ -1256,28 +1259,6 @@
         }
         document.addEventListener('fullscreenchange', atualizarBotoesTelaCheia);
         document.addEventListener('webkitfullscreenchange', atualizarBotoesTelaCheia);
-
-        // Manifesto gerado na hora: ao "instalar" / adicionar à tela inicial, abre em tela cheia
-        (function () {
-            try {
-                const base = location.href.split('#')[0];
-                const icone = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#10b981"/><path d="M128 176h232a24 24 0 0 1 24 24v168a24 24 0 0 1-24 24H152a24 24 0 0 1-24-24z" fill="#fff"/><path d="M128 176l200-56a16 16 0 0 1 20 15v41" fill="none" stroke="#fff" stroke-width="24" stroke-linejoin="round"/><circle cx="332" cy="284" r="20" fill="#10b981"/></svg>');
-                const manifesto = {
-                    name: 'Sistema Financeiro Pessoal', short_name: 'Finanças',
-                    start_url: base, scope: base.replace(/[^/]*$/, ''),
-                    display: 'fullscreen', display_override: ['fullscreen', 'standalone'],
-                    orientation: 'any', background_color: '#0f172a', theme_color: '#0f172a',
-                    icons: [{ src: icone, sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]
-                };
-                const link = document.createElement('link');
-                link.rel = 'manifest';
-                link.href = URL.createObjectURL(new Blob([JSON.stringify(manifesto)], { type: 'application/manifest+json' }));
-                document.head.appendChild(link);
-                const apple = document.createElement('link');
-                apple.rel = 'apple-touch-icon'; apple.href = icone;
-                document.head.appendChild(apple);
-            } catch (e) { /* navegador sem suporte: segue normal */ }
-        })();
 
         // Esconde a barra inferior enquanto o teclado do celular está aberto
         document.addEventListener('focusin', (e) => {
@@ -4502,5 +4483,54 @@
             window.addEventListener('scroll', esconder, true);
         })();
     </script>
+<dialog id="instalacao-ajuda" style="border:0;border-radius:20px;padding:24px;max-width:360px;width:calc(100% - 32px);background:#0f172a;color:#fff;box-sizing:border-box;box-shadow:0 20px 60px #0006" aria-labelledby="instalacao-titulo">
+<h2 id="instalacao-titulo" style="font-size:20px;font-weight:700;margin-bottom:12px">Instalar Finanças</h2>
+<p id="instalacao-texto" style="line-height:1.7;font-size:15px"></p>
+<form method="dialog"><button style="margin-top:20px;padding:10px 20px;background:#059669;color:white;border:0;border-radius:10px;cursor:pointer">Entendi</button></form>
+</dialog>
+<script>
+(function () {
+    let convite = null;
+    let instalado = false;
+    const botao = document.getElementById('instalar-app');
+    const modoApp = window.matchMedia('(display-mode: standalone)');
+    const modoFull = window.matchMedia('(display-mode: fullscreen)');
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    function atualizar() {
+        botao.hidden = !mobile || instalado || modoApp.matches || modoFull.matches || navigator.standalone === true;
+    }
+    window.addEventListener('beforeinstallprompt', function (evento) {
+        evento.preventDefault(); convite = evento; atualizar();
+    });
+    window.addEventListener('appinstalled', function () { instalado = true; convite = null; atualizar(); });
+    [modoApp, modoFull].forEach(function (modo) { if (modo.addEventListener) modo.addEventListener('change', atualizar); });
+    window.instalarAppCelular = async function () {
+        if (convite) {
+            const evento = convite; convite = null;
+            try {
+                await evento.prompt();
+                const escolha = await evento.userChoice;
+                if (escolha.outcome === 'accepted') { instalado = true; atualizar(); }
+                return;
+            } catch (erro) { /* mostra instruções quando o navegador não abrir o convite */ }
+        }
+        const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        let texto;
+        if (!window.isSecureContext || location.protocol === 'file:') {
+            texto = 'Para instalar, abra o sistema pelo endereço HTTPS do site no navegador do celular. Arquivos abertos diretamente pelo gerenciador de arquivos não permitem a instalação completa.';
+        } else if (ios) {
+            texto = 'No Safari, toque em Compartilhar e escolha “Adicionar à Tela de Início”. Se aparecer, ative “Abrir como App” e toque em Adicionar. Se estiver em outro navegador, abra este endereço no Safari.';
+        } else {
+            texto = 'No Chrome do Android, abra o menu ⋮ e toque em “Instalar app” ou “Adicionar à tela inicial”. Se a opção não aparecer, atualize a página e abra o endereço diretamente no Chrome, fora de aplicativos como WhatsApp ou Instagram.';
+        }
+        document.getElementById('instalacao-texto').textContent = texto;
+        document.getElementById('instalacao-ajuda').showModal();
+    };
+    if ('serviceWorker' in navigator && window.isSecureContext && /^https?:$/.test(location.protocol)) {
+        navigator.serviceWorker.register('./sw.js').catch(function () { /* instruções manuais continuam disponíveis */ });
+    }
+    atualizar();
+})();
+</script>
 </body>
 </html>
