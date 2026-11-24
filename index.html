@@ -200,7 +200,7 @@
         // Dispara o carregamento inicial assim que o Firebase conectar
         window.carregarDadosFirestore();
     </script>
-<link rel="manifest" href="./manifest.webmanifest?v=1.26">
+<link rel="manifest" href="./manifest.webmanifest?v=1.27">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 </head>
@@ -225,7 +225,7 @@
                 </div>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800">
-                Controle Financeiro v1.26 (Firebase)
+                Controle Financeiro v1.27 (Firebase)
             </div>
         </div>
 
@@ -334,7 +334,7 @@
                 </button>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800 flex justify-between items-center">
-                <span>v1.26</span>
+                <span>v1.27</span>
                 <button onclick="bloquearSistema()" class="text-slate-400 hover:text-white cursor-pointer" title="Bloquear Sistema"><i class="fa-solid fa-lock"></i> Sair</button>
             </div>
         </aside>
@@ -1368,6 +1368,10 @@
 
         function verificarSenha() {
             const senhaDigitada = document.getElementById('input-senha-acesso').value;
+            if (!dadosCarregados) {
+                alert('Ainda carregando seus dados do servidor. Aguarde alguns segundos e tente novamente (verifique a internet).');
+                return;
+            }
             let senhaSalva = db.senha || '1234';
 
             if (senhaDigitada === senhaSalva) {
@@ -1484,6 +1488,12 @@
             projecoesPeriodicidade: {} // Periodicidade de cada item recorrente { "idChave": "mensal|bimestral|trimestral|semestral|anual" }
         };
 
+        // Proteção contra perda de dados: nada é gravado antes de os dados reais chegarem do servidor.
+        // (Antes, se o app abrisse sem conexão ou alguém entrasse antes do carregamento,
+        //  os dados padrão podiam ser gravados por cima de tudo.)
+        let dadosCarregados = false;
+        let transacoesNoServidor = 0;
+
         // Função para carregar e escutar dados do Firebase em tempo real
         function carregarDadosFirestore() {
             if (!window.onSnapshot) return;
@@ -1492,10 +1502,17 @@
                     const dadosRemotos = docSnap.data();
                     if (dadosRemotos && dadosRemotos.conteudo) {
                         db = JSON.parse(dadosRemotos.conteudo);
+                        dadosCarregados = true;
+                        transacoesNoServidor = Array.isArray(db.transacoes) ? db.transacoes.length : 0;
                         normalizarBancoDados();
                         initApp();
                     }
+                } else if (docSnap.metadata && docSnap.metadata.fromCache) {
+                    // Sem resposta do servidor (offline/conexão lenta): NÃO cria dados padrão
+                    console.warn('Firestore sem conexão: aguardando o servidor antes de carregar os dados.');
                 } else {
+                    // O servidor confirmou que o banco ainda não existe (primeiro uso): cria com os dados padrão
+                    dadosCarregados = true;
                     saveData();
                 }
             }, (error) => {
@@ -1604,6 +1621,8 @@
                 if (!window.setDoc || !window.docRef) throw new Error('A conexão com o banco de dados não está disponível. Tente novamente quando estiver conectado.');
                 await window.setDoc(window.docRef, { conteudo: JSON.stringify(dados) });
                 db = dados;
+                dadosCarregados = true;
+                transacoesNoServidor = dados.transacoes.length;
                 normalizarBancoDados();
                 initApp();
                 alert('Backup restaurado com sucesso.');
@@ -1614,6 +1633,15 @@
         }
 
         function saveData() {
+            if (!dadosCarregados) {
+                alert('Seus dados ainda não terminaram de carregar do servidor, então nada foi salvo (para não apagar o que já existe). Verifique a internet, aguarde alguns segundos e tente de novo.');
+                return;
+            }
+            if (transacoesNoServidor >= 5 && (!Array.isArray(db.transacoes) || db.transacoes.length === 0)
+                && !confirm(`Atenção: isto vai deixar o banco de dados SEM nenhuma transação (hoje há ${transacoesNoServidor}). Deseja realmente continuar?`)) {
+                location.reload();
+                return;
+            }
             normalizarBancoDados();
             if (window.setDoc && window.docRef) {
                 window.setDoc(window.docRef, { conteudo: JSON.stringify(db) }).then(() => {
