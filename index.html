@@ -11,7 +11,7 @@
     <script>
         (function () {
             let tema = null;
-            try { tema = localStorage.getItem('tema-sistema'); } catch (e) {}
+            try { tema = localStorage.getItem('financasapp:tema') || localStorage.getItem('tema-sistema'); } catch (e) {}
             if (tema !== 'claro' && tema !== 'escuro') {
                 tema = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'escuro' : 'claro';
             }
@@ -171,7 +171,7 @@
     <!-- Firebase App (Modular) e Firestore -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, getDoc, setDoc, doc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDTQbJuBDG4fYpVHcd3Bm8dIzMEM-9iRI",
@@ -192,11 +192,16 @@
         window.setDoc = setDoc;
         window.onSnapshot = onSnapshot;
         window.getDocs = getDocs;
+        window.getDoc = getDoc;
+        window.deleteDoc = deleteDoc;
+        // Cupons fiscais ficam em documentos próprios (o documento "principal" tem limite de 1 MB)
+        window.cupomDocRef = (id) => doc(dbFirestore, "dados_financeiros", id);
 
         // Dispara o carregamento inicial assim que o Firebase conectar
         window.carregarDadosFirestore();
     </script>
 <link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 </head>
 <body class="bg-gray-50 font-sans text-gray-800 pb-20 md:pb-0">
@@ -220,7 +225,7 @@
                 </div>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800">
-                Controle Financeiro v1.23 (Firebase)
+                Controle Financeiro v1.24 (Firebase)
             </div>
         </div>
 
@@ -324,9 +329,12 @@
                         <i class="fa-solid fa-key w-5"></i> <span>Alterar Senha</span>
                     </button>
                 </nav>
+                <button type="button" id="menu-instalar-app" onclick="instalarAppComputador()" class="so-navegador w-full mt-6 flex items-center space-x-3 px-4 py-2.5 rounded-lg border border-emerald-500/40 text-emerald-300 hover:bg-slate-800 transition cursor-pointer" title="Instalar o FinançasApp no computador (Windows ou Linux)">
+                    <i class="fa-solid fa-desktop w-5"></i> <span>Instalar app no PC</span>
+                </button>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800 flex justify-between items-center">
-                <span>v1.23</span>
+                <span>v1.24</span>
                 <button onclick="bloquearSistema()" class="text-slate-400 hover:text-white cursor-pointer" title="Bloquear Sistema"><i class="fa-solid fa-lock"></i> Sair</button>
             </div>
         </aside>
@@ -521,6 +529,17 @@
                                     <span class="text-slate-700">Repete todo mês (entra nas Projeções)</span>
                                 </label>
                                 <p class="text-[11px] text-slate-500 mt-1">Desmarque quando esta receita deixar de se repetir (ex.: último mês de um salário). A partir daí ela para de ser projetada.</p>
+                            </div>
+                            <div class="sm:col-span-2 md:col-span-3">
+                                <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-receipt mr-1 text-emerald-600"></i>Cupom fiscal <span class="font-normal text-slate-400">(opcional)</span></label>
+                                <div class="flex flex-wrap items-center gap-2 border border-dashed border-slate-300 rounded-lg p-2.5 bg-slate-50">
+                                    <button type="button" onclick="tirarFotoCupom('tx')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-camera mr-1"></i>Tirar foto</button>
+                                    <button type="button" onclick="document.getElementById('tx-cupom-arquivo').click()" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-1"></i>Enviar arquivo</button>
+                                    <input type="file" id="tx-cupom-arquivo" accept="image/*,application/pdf,.pdf" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('tx', this)">
+                                    <input type="file" id="tx-cupom-camera" accept="image/*" capture="environment" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('tx', this)">
+                                    <div id="tx-cupom-preview" class="flex flex-wrap items-center gap-2 min-w-0"></div>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-1">Foto (JPG/PNG) ou PDF de até 650 KB. As fotos são reduzidas automaticamente.</p>
                             </div>
                             <div class="sm:col-span-2 md:col-span-3 flex flex-col sm:flex-row justify-end gap-2 pt-2">
                                 <button type="button" id="btn-cancelar-edicao" onclick="cancelarEdicao()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Cancelar</button>
@@ -1138,11 +1157,55 @@
                     </label>
                     <p class="text-[11px] text-slate-500 mt-1">Desmarque quando esta receita deixar de se repetir a partir deste lançamento.</p>
                 </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-receipt mr-1 text-emerald-600"></i>Cupom fiscal <span class="font-normal text-slate-400">(opcional)</span></label>
+                    <div class="flex flex-wrap items-center gap-2 border border-dashed border-slate-300 rounded-lg p-2.5 bg-slate-50">
+                        <button type="button" onclick="tirarFotoCupom('lc')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-camera mr-1"></i>Tirar foto</button>
+                        <button type="button" onclick="document.getElementById('lc-cupom-arquivo').click()" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-1"></i>Enviar arquivo</button>
+                        <input type="file" id="lc-cupom-arquivo" accept="image/*,application/pdf,.pdf" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('lc', this)">
+                        <input type="file" id="lc-cupom-camera" accept="image/*" capture="environment" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('lc', this)">
+                        <div id="lc-cupom-preview" class="flex flex-wrap items-center gap-2 min-w-0"></div>
+                    </div>
+                </div>
                 <div class="sm:col-span-2 flex gap-2 justify-end pt-2">
                     <button type="button" onclick="fecharModalLancamentoCategoria()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Cancelar</button>
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Salvar Lançamento</button>
+                    <button type="submit" id="btn-salvar-lc" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Salvar Lançamento</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Visualizar cupom fiscal -->
+    <div id="modal-cupom" class="modal-fundo fixed inset-0 z-[75] hidden items-center justify-center bg-slate-900/60 p-4" onclick="if (event.target === this) fecharModalCupom()">
+        <div class="modal-caixa bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col">
+            <div class="flex justify-between items-center gap-3 p-4 border-b border-slate-100">
+                <h3 class="text-base font-bold text-slate-800 truncate min-w-0"><i class="fa-solid fa-receipt mr-2 text-emerald-600"></i><span id="cupom-titulo">Cupom fiscal</span></h3>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <a id="cupom-baixar" href="#" download class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold"><i class="fa-solid fa-download mr-1"></i>Baixar</a>
+                    <button type="button" onclick="fecharModalCupom()" class="text-slate-400 hover:text-slate-600 cursor-pointer" aria-label="Fechar"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+            </div>
+            <div id="cupom-corpo" class="p-4 overflow-auto min-h-0 flex-1 flex items-center justify-center"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: Câmera (computador com webcam) para fotografar o cupom -->
+    <div id="modal-camera" class="modal-fundo fixed inset-0 z-[78] hidden items-center justify-center bg-slate-900/70 p-4">
+        <div class="modal-caixa bg-white rounded-2xl shadow-xl w-full max-w-xl flex flex-col overflow-hidden">
+            <div class="flex justify-between items-center gap-3 p-4 border-b border-slate-100">
+                <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-camera mr-2 text-emerald-600"></i>Fotografar cupom fiscal</h3>
+                <button type="button" onclick="fecharCamera()" class="text-slate-400 hover:text-slate-600 cursor-pointer" aria-label="Fechar"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="bg-black flex items-center justify-center" style="min-height: 12rem">
+                <video id="camera-video" autoplay playsinline muted class="w-full object-contain" style="max-height: 60vh"></video>
+            </div>
+            <p id="camera-msg" class="text-xs text-slate-500 px-4 pt-3"></p>
+            <div class="flex flex-wrap gap-2 p-4 justify-end">
+                <button type="button" id="camera-trocar" onclick="trocarCamera()" class="hidden mr-auto bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer"><i class="fa-solid fa-camera-rotate mr-1"></i>Trocar câmera</button>
+                <button type="button" id="camera-arquivo" onclick="escolherArquivoNoLugarDaCamera()" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-1"></i>Enviar arquivo</button>
+                <button type="button" onclick="fecharCamera()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer">Cancelar</button>
+                <button type="button" id="camera-capturar" onclick="capturarFotoCamera()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer"><i class="fa-solid fa-circle-dot mr-1"></i>Capturar</button>
+            </div>
         </div>
     </div>
 
@@ -1195,7 +1258,7 @@
 
         function definirTema(tema) {
             document.documentElement.classList.toggle('dark', tema === 'escuro');
-            try { localStorage.setItem('tema-sistema', tema); } catch (e) {}
+            try { localStorage.setItem('financasapp:tema', tema); } catch (e) {}
             atualizarBotoesTema();
             aplicarTemaGraficos();
         }
@@ -2429,7 +2492,9 @@
             const editandoId = document.getElementById('tx-id').value;
             if (editandoId && ids.includes(Number(editandoId))) cancelarEdicao();
 
+            const cupons = db.transacoes.filter(t => ids.includes(t.id) && t.cupom).map(t => t.cupom.docId);
             db.transacoes = db.transacoes.filter(t => !ids.includes(t.id));
+            limparCuponsOrfaos(cupons);
             saveData();
         }
 
@@ -2772,7 +2837,8 @@
                     data: adicionarMeses(d.dataStr, i),
                     status: d.status,
                     recorrente: d.tipo === 'receita' ? (d.recorrente !== false) : undefined,
-                    competencia: d.competencia ? somarMeses(d.competencia, i) : undefined
+                    competencia: d.competencia ? somarMeses(d.competencia, i) : undefined,
+                    cupom: d.cupom || undefined // o mesmo cupom vale para todas as parcelas da compra
                 });
             }
         }
@@ -2802,8 +2868,10 @@
             atualizarPreviewParcelas();
         }
 
-        document.getElementById('form-transacao').addEventListener('submit', (e) => {
+        document.getElementById('form-transacao').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const form = e.currentTarget;
+            if (form.dataset.enviando === '1') return;
             const idEdicao = document.getElementById('tx-id').value;
             const dados = {
                 tipo: document.getElementById('tx-tipo').value,
@@ -2820,9 +2888,27 @@
                 competencia: lerCompetencia('tx')
             };
 
+            // Cupom fiscal (opcional): envia antes de gravar a transação
+            const btnSalvar = document.getElementById('btn-salvar-tx');
+            const textoBotao = btnSalvar.innerText;
+            form.dataset.enviando = '1';
+            if (estadoCupom('tx').novo) { btnSalvar.disabled = true; btnSalvar.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Enviando cupom...'; }
+            try {
+                const resultado = await obterCupomParaSalvar('tx', idEdicao || 'novo');
+                if (resultado === false) return;
+                dados.cupom = resultado;
+            } finally {
+                form.dataset.enviando = '';
+                btnSalvar.disabled = false;
+                btnSalvar.innerText = textoBotao;
+            }
+            let cupomAnterior = null;
+
             if (idEdicao) {
                 const tx = db.transacoes.find(t => t.id == idEdicao);
                 if (tx) {
+                    cupomAnterior = tx.cupom ? tx.cupom.docId : null;
+                    if (dados.cupom) tx.cupom = dados.cupom; else delete tx.cupom;
                     const sufixo = tx.descricao.match(REGEX_SUFIXO_PARCELA); // já é uma parcela? mantém o "(n/N)"
                     tx.tipo = dados.tipo;
                     tx.descricao = sufixo ? `${dados.descricaoBase} (${sufixo[1]}/${sufixo[2]})` : dados.descricaoBase;
@@ -2855,7 +2941,9 @@
                 atualizarStatusOpcoes();
                 atualizarCategoriasSelect();
                 atualizarPreviewParcelas();
+                resetarCupom('tx');
             }
+            limparCuponsOrfaos([cupomAnterior]);
             saveData();
         });
 
@@ -2887,6 +2975,7 @@
             } else {
                 atualizarCampoCompetencia('tx', true);
             }
+            resetarCupom('tx', tx.cupom && tx.cupom.docId ? tx.cupom : null);
 
             document.getElementById('form-title').innerText = 'Editar Transação';
             document.getElementById('btn-salvar-tx').innerText = 'Atualizar Transação';
@@ -2907,10 +2996,13 @@
             atualizarStatusOpcoes();
             atualizarCategoriasSelect();
             configurarCampoParcelas(false, false);
+            resetarCupom('tx');
         }
 
         function excluirTransacao(id) {
+            const cupons = db.transacoes.filter(t => t.id === id && t.cupom).map(t => t.cupom.docId);
             db.transacoes = db.transacoes.filter(t => t.id !== id);
+            limparCuponsOrfaos(cupons);
             saveData();
         }
 
@@ -3144,7 +3236,7 @@
                     const dataFmt = t.data.split('-').reverse().join('/');
                     const valorStr = t.valor.toFixed(2).replace('.', ',');
                     const valorStrAlt = t.valor.toString();
-                    const textoBusca = `${t.descricao} ${t.tipo} ${t.categoria || ''} ${t.responsavel || ''} ${t.banco} ${t.pagamento} ${t.status} ${dataFmt} ${t.data} ${valorStr} ${valorStrAlt}`.toLowerCase();
+                    const textoBusca = `${t.descricao} ${t.tipo} ${t.categoria || ''} ${t.responsavel || ''} ${t.banco} ${t.pagamento} ${t.status} ${dataFmt} ${t.data} ${valorStr} ${valorStrAlt} ${t.cupom ? 'cupom fiscal' : ''}`.toLowerCase();
                     if (!textoBusca.includes(fBusca)) return false;
                 }
 
@@ -3243,6 +3335,7 @@
                         <td class="p-3 md:p-4 celula-status">${statusBadge}</td>
                         <td class="p-3 md:p-4 font-bold whitespace-nowrap ${valorClasse}">${sinal}${formatarMoeda(t.valor)}</td>
                         <td class="p-3 md:p-4 text-center whitespace-nowrap space-x-2">
+                            ${t.cupom && t.cupom.docId ? `<button type="button" data-doc="${escapeHtml(t.cupom.docId)}" data-nome="${escapeHtml(t.cupom.nome || '')}" onclick="verCupom(this.dataset.doc, this.dataset.nome)" class="text-emerald-600 hover:text-emerald-800 cursor-pointer" title="Ver cupom fiscal" aria-label="Ver cupom fiscal"><i class="fa-solid fa-receipt"></i></button>` : ''}
                             ${t.tipo === 'receita' ? `<button onclick="toggleRecorrenciaTransacao(${t.id})" class="${t.recorrente !== false ? 'text-amber-500 hover:text-amber-700' : 'text-slate-300 hover:text-amber-600'} cursor-pointer" title="${t.recorrente !== false ? 'Marcar como não recorrente (parar de projetar a partir daqui)' : 'Marcar como recorrente novamente'}"><i class="fa-solid fa-rotate"></i></button>` : ''}
                             ${t.tipo !== 'compensacao_fatura' ? `<button onclick="editarTransacao(${t.id})" class="text-slate-400 hover:text-indigo-600 cursor-pointer" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
                             <button onclick="excluirTransacao(${t.id})" class="text-slate-400 hover:text-rose-600 cursor-pointer" title="Excluir"><i class="fa-solid fa-trash"></i></button>
@@ -4356,6 +4449,7 @@
             document.getElementById('lc-data').value = hojeLocalISO();
             document.getElementById('lc-competencia').value = '';
             document.getElementById('lc-competencia').dataset.manual = '';
+            resetarCupom('lc');
 
             if (chaveInicial && Array.from(selCat.options).some(o => o.value === chaveInicial)) selCat.value = chaveInicial;
             aoTrocarCategoriaLC();
@@ -4422,14 +4516,31 @@
             el.textContent = (n > 1 && !isNaN(v)) ? `${n}x de ${formatarMoeda(v / n)}, uma por mês a partir da data informada.` : '';
         }
 
-        document.getElementById('form-lanc-categoria').addEventListener('submit', (e) => {
+        document.getElementById('form-lanc-categoria').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const form = e.currentTarget;
+            if (form.dataset.enviando === '1') return;
             const partes = document.getElementById('lc-categoria').value.split('|');
             const tipo = partes[0];
             const categoria = partes.slice(1).join('|');
             if (!categoria) return;
 
+            const btnSalvar = document.getElementById('btn-salvar-lc');
+            const textoBotao = btnSalvar.innerText;
+            let cupom;
+            form.dataset.enviando = '1';
+            if (estadoCupom('lc').novo) { btnSalvar.disabled = true; btnSalvar.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Enviando cupom...'; }
+            try {
+                cupom = await obterCupomParaSalvar('lc', 'novo');
+                if (cupom === false) return;
+            } finally {
+                form.dataset.enviando = '';
+                btnSalvar.disabled = false;
+                btnSalvar.innerText = textoBotao;
+            }
+
             criarTransacoes({
+                cupom: cupom,
                 tipo: tipo,
                 descricaoBase: document.getElementById('lc-descricao').value.trim(),
                 valorTotal: parseFloat(document.getElementById('lc-valor').value),
@@ -4448,8 +4559,341 @@
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { fecharModalLancamentoCategoria(); fecharDetalheDashboard(); fecharDicaTelaCheia(); }
+            if (e.key === 'Escape') {
+                if (!document.getElementById('modal-camera').classList.contains('hidden')) { fecharCamera(); return; }
+                if (!document.getElementById('modal-cupom').classList.contains('hidden')) { fecharModalCupom(); return; }
+                fecharModalLancamentoCategoria(); fecharDetalheDashboard(); fecharDicaTelaCheia();
+            }
         });
+
+        // =====================================================================
+        // Cupom fiscal (opcional) anexado à transação
+        // Cada arquivo fica num documento próprio do Firestore (dados_financeiros/cupom_...)
+        // para não estourar o limite de 1 MB do documento "principal".
+        // =====================================================================
+        const CUPOM_LIMITE_CARACTERES = 900000; // tamanho máximo do arquivo já codificado (cabe num documento)
+        const _cupom = {};          // estado por formulário: 'tx' e 'lc'
+        const _cacheCupons = {};    // docId -> { nome, mime, arquivo }
+        let _urlCupomAberto = null;
+
+        function estadoCupom(p) {
+            if (!_cupom[p]) _cupom[p] = { novo: null, existente: null, remover: false, processando: false };
+            return _cupom[p];
+        }
+
+        function resetarCupom(p, existente = null) {
+            _cupom[p] = { novo: null, existente: existente, remover: false, processando: false };
+            renderPreviewCupom(p);
+        }
+
+        function tamanhoCupomKB(dataUrl) {
+            const base64 = (dataUrl.split(',')[1] || '');
+            return Math.max(1, Math.round(base64.length * 3 / 4 / 1024));
+        }
+
+        function renderPreviewCupom(p) {
+            const el = document.getElementById(`${p}-cupom-preview`);
+            if (!el) return;
+            const est = estadoCupom(p);
+            const botao = (acao, icone, texto, cor) => `<button type="button" onclick="${acao}" class="${cor} text-xs font-semibold cursor-pointer whitespace-nowrap"><i class="fa-solid ${icone} mr-1"></i>${texto}</button>`;
+            if (est.processando) {
+                el.innerHTML = '<span class="text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Preparando arquivo...</span>';
+            } else if (est.novo) {
+                const miniatura = est.novo.mime.startsWith('image/')
+                    ? `<img src="${est.novo.dataUrl}" alt="Prévia do cupom" class="w-10 h-10 object-cover rounded border border-slate-200 bg-white">`
+                    : '<i class="fa-solid fa-file-pdf text-rose-600 text-2xl"></i>';
+                el.innerHTML = `${miniatura}
+                    <span class="text-xs text-slate-700 truncate max-w-[10rem] sm:max-w-[14rem]" title="${escapeHtml(est.novo.nome)}">${escapeHtml(est.novo.nome)}</span>
+                    <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 rounded px-1.5 py-0.5 whitespace-nowrap">${est.existente ? 'substitui o atual' : 'novo'} · ${tamanhoCupomKB(est.novo.dataUrl)} KB</span>
+                    ${botao(`verCupomPendente('${p}')`, 'fa-eye', 'Ver', 'text-indigo-600 hover:text-indigo-800')}
+                    ${botao(`descartarCupomNovo('${p}')`, 'fa-xmark', 'Tirar', 'text-rose-600 hover:text-rose-800')}`;
+            } else if (est.existente && !est.remover) {
+                el.innerHTML = `<i class="fa-solid fa-receipt text-emerald-600 text-xl"></i>
+                    <span class="text-xs text-slate-700 truncate max-w-[10rem] sm:max-w-[14rem]">${escapeHtml(est.existente.nome || 'Cupom anexado')}</span>
+                    ${botao(`verCupom('${escapeHtml(est.existente.docId)}')`, 'fa-eye', 'Ver', 'text-indigo-600 hover:text-indigo-800')}
+                    ${botao(`marcarRemocaoCupom('${p}', true)`, 'fa-trash', 'Remover', 'text-rose-600 hover:text-rose-800')}`;
+            } else if (est.existente && est.remover) {
+                el.innerHTML = `<span class="text-xs text-rose-600"><i class="fa-solid fa-trash mr-1"></i>O cupom será removido ao salvar.</span>
+                    ${botao(`marcarRemocaoCupom('${p}', false)`, 'fa-rotate-left', 'Desfazer', 'text-slate-600 hover:text-slate-800')}`;
+            } else {
+                el.innerHTML = '<span class="text-xs text-slate-400 italic">Nenhum cupom anexado</span>';
+            }
+        }
+
+        function descartarCupomNovo(p) { estadoCupom(p).novo = null; renderPreviewCupom(p); }
+        function marcarRemocaoCupom(p, remover) { const est = estadoCupom(p); est.remover = remover; est.novo = null; renderPreviewCupom(p); }
+
+        function lerArquivoComoDataUrl(arquivo) {
+            return new Promise((resolve, reject) => {
+                const leitor = new FileReader();
+                leitor.onload = () => resolve(leitor.result);
+                leitor.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+                leitor.readAsDataURL(arquivo);
+            });
+        }
+
+        function carregarImagem(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('Formato de imagem não suportado por este navegador (use JPG ou PNG).'));
+                img.src = src;
+            });
+        }
+
+        // Reduz a foto (lado maior até 1600 px, JPEG) até caber no limite, mantendo o texto legível
+        async function comprimirImagemCupom(dataUrlOriginal) {
+            const img = await carregarImagem(dataUrlOriginal);
+            let ladoMaximo = 1600;
+            for (let tentativa = 0; tentativa < 6; tentativa++) {
+                const escala = Math.min(1, ladoMaximo / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(img.naturalWidth * escala));
+                canvas.height = Math.max(1, Math.round(img.naturalHeight * escala));
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                for (const qualidade of [0.82, 0.7, 0.58]) {
+                    const url = canvas.toDataURL('image/jpeg', qualidade);
+                    if (url.length <= CUPOM_LIMITE_CARACTERES) return url;
+                }
+                ladoMaximo = Math.round(ladoMaximo * 0.75);
+            }
+            throw new Error('A imagem continua grande demais mesmo depois de reduzida.');
+        }
+
+        async function processarCupom(p, dataUrlOriginal, nome, mime) {
+            const ehPdf = mime === 'application/pdf' || /\.pdf$/i.test(nome || '');
+            const ehImagem = (mime || '').startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(nome || '');
+            if (!ehPdf && !ehImagem) throw new Error('Envie uma foto (JPG/PNG) ou um PDF.');
+            const est = estadoCupom(p);
+            est.processando = true;
+            renderPreviewCupom(p);
+            try {
+                let dataUrl, mimeFinal, nomeFinal = nome || 'cupom';
+                if (ehPdf) {
+                    dataUrl = 'data:application/pdf;base64,' + (dataUrlOriginal.split(',')[1] || '');
+                    if (dataUrl.length > CUPOM_LIMITE_CARACTERES) throw new Error('O PDF passa de 650 KB. Envie uma foto do cupom ou um PDF menor.');
+                    mimeFinal = 'application/pdf';
+                    if (!/\.pdf$/i.test(nomeFinal)) nomeFinal += '.pdf';
+                } else {
+                    dataUrl = await comprimirImagemCupom(dataUrlOriginal);
+                    mimeFinal = 'image/jpeg';
+                    nomeFinal = nomeFinal.replace(/\.[^.]+$/, '') + '.jpg';
+                }
+                est.novo = { dataUrl, nome: nomeFinal, mime: mimeFinal };
+                est.remover = false;
+            } finally {
+                est.processando = false;
+                renderPreviewCupom(p);
+            }
+        }
+
+        async function aoEscolherArquivoCupom(p, input) {
+            const arquivo = input.files && input.files[0];
+            input.value = '';
+            if (!arquivo) return;
+            if (arquivo.size > 25 * 1024 * 1024) { alert('Arquivo grande demais (máximo de 25 MB antes da redução).'); return; }
+            try {
+                const dataUrl = await lerArquivoComoDataUrl(arquivo);
+                await processarCupom(p, dataUrl, arquivo.name, arquivo.type);
+            } catch (erro) {
+                alert(`Não foi possível anexar o cupom: ${erro.message}`);
+            }
+        }
+
+        // Envia o cupom novo (se houver) e devolve o que gravar na transação:
+        // objeto = cupom anexado; undefined = sem cupom; false = o usuário cancelou o salvamento.
+        async function obterCupomParaSalvar(p, idBase) {
+            const est = estadoCupom(p);
+            const atual = est.remover ? undefined : (est.existente || undefined);
+            if (est.processando) { alert('Aguarde o cupom terminar de ser preparado.'); return false; }
+            if (!est.novo) return atual;
+            try {
+                if (!window.setDoc || !window.cupomDocRef) throw new Error('sem conexão com o banco de dados');
+                const docId = `cupom_${String(idBase).replace(/[^\w-]/g, '')}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+                const enviadoEm = new Date().toISOString();
+                await window.setDoc(window.cupomDocRef(docId), {
+                    tipoDocumento: 'cupom_fiscal', nome: est.novo.nome, mime: est.novo.mime, arquivo: est.novo.dataUrl, enviadoEm
+                });
+                _cacheCupons[docId] = { nome: est.novo.nome, mime: est.novo.mime, arquivo: est.novo.dataUrl };
+                return { docId, nome: est.novo.nome, mime: est.novo.mime, enviadoEm };
+            } catch (erro) {
+                console.error('Falha ao enviar o cupom fiscal:', erro);
+                const msg = `Não foi possível enviar o cupom fiscal (${erro.message || erro}).\n\nSalvar a transação mesmo assim${atual ? ', mantendo o cupom anterior' : ', sem o cupom'}?`;
+                return confirm(msg) ? atual : false;
+            }
+        }
+
+        // Apaga do Firestore os cupons que nenhuma transação usa mais
+        function limparCuponsOrfaos(docIds) {
+            const emUso = new Set(db.transacoes.map(t => t.cupom && t.cupom.docId).filter(Boolean));
+            [...new Set((docIds || []).filter(Boolean))].forEach(id => {
+                if (emUso.has(id) || !window.deleteDoc || !window.cupomDocRef) return;
+                delete _cacheCupons[id];
+                window.deleteDoc(window.cupomDocRef(id)).catch(erro => console.warn('Não foi possível apagar o cupom', id, erro));
+            });
+        }
+
+        // ---------- Visualização ----------
+        function abrirModalCupom() {
+            const m = document.getElementById('modal-cupom');
+            m.classList.remove('hidden'); m.classList.add('flex');
+        }
+
+        function fecharModalCupom() {
+            const m = document.getElementById('modal-cupom');
+            m.classList.add('hidden'); m.classList.remove('flex');
+            document.getElementById('cupom-corpo').innerHTML = '';
+            if (_urlCupomAberto) { URL.revokeObjectURL(_urlCupomAberto); _urlCupomAberto = null; }
+        }
+
+        async function mostrarArquivoCupom(nome, mime, dataUrl) {
+            if (_urlCupomAberto) { URL.revokeObjectURL(_urlCupomAberto); _urlCupomAberto = null; }
+            const blob = await (await fetch(dataUrl)).blob();
+            _urlCupomAberto = URL.createObjectURL(blob);
+            document.getElementById('cupom-titulo').textContent = nome || 'Cupom fiscal';
+            const baixar = document.getElementById('cupom-baixar');
+            baixar.href = _urlCupomAberto;
+            baixar.download = nome || (mime === 'application/pdf' ? 'cupom.pdf' : 'cupom.jpg');
+            baixar.classList.remove('hidden');
+            document.getElementById('cupom-corpo').innerHTML = mime === 'application/pdf'
+                ? `<iframe src="${_urlCupomAberto}" title="Cupom fiscal" class="w-full rounded-lg border border-slate-200 bg-white" style="height: 70vh"></iframe>`
+                : `<img src="${_urlCupomAberto}" alt="Cupom fiscal" class="max-w-full rounded-lg border border-slate-200 bg-white" style="max-height: 72vh">`;
+        }
+
+        async function verCupom(docId, nome) {
+            if (!docId) return;
+            document.getElementById('cupom-titulo').textContent = nome || 'Cupom fiscal';
+            document.getElementById('cupom-baixar').classList.add('hidden');
+            document.getElementById('cupom-corpo').innerHTML = '<p class="text-sm text-slate-500 py-10"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando cupom...</p>';
+            abrirModalCupom();
+            try {
+                let dados = _cacheCupons[docId];
+                if (!dados) {
+                    if (!window.getDoc || !window.cupomDocRef) throw new Error('sem conexão com o banco de dados');
+                    const snap = await window.getDoc(window.cupomDocRef(docId));
+                    if (!snap.exists()) throw new Error('o arquivo não foi encontrado (pode ter sido apagado)');
+                    dados = snap.data();
+                    _cacheCupons[docId] = { nome: dados.nome, mime: dados.mime, arquivo: dados.arquivo };
+                }
+                await mostrarArquivoCupom(dados.nome || nome, dados.mime, dados.arquivo);
+            } catch (erro) {
+                document.getElementById('cupom-corpo').innerHTML = `<p class="text-sm text-rose-600 py-10 text-center"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Não foi possível abrir o cupom: ${escapeHtml(erro.message || String(erro))}</p>`;
+            }
+        }
+
+        async function verCupomPendente(p) {
+            const novo = estadoCupom(p).novo;
+            if (!novo) return;
+            abrirModalCupom();
+            await mostrarArquivoCupom(novo.nome, novo.mime, novo.dataUrl);
+        }
+
+        // ---------- Câmera ----------
+        // Celular/tablet: abre a câmera nativa (melhor foco e flash).
+        // Computador: usa a webcam dentro do sistema; sem webcam, oferece o envio de arquivo.
+        const _camera = { stream: null, prefixo: null, dispositivos: [], indice: 0 };
+
+        function tirarFotoCupom(p) {
+            const temWebcamApi = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && window.isSecureContext;
+            if (toqueEhPrincipal() || !temWebcamApi) {
+                document.getElementById(`${p}-cupom-camera`).click();
+                return;
+            }
+            _camera.prefixo = p;
+            const m = document.getElementById('modal-camera');
+            m.classList.remove('hidden'); m.classList.add('flex');
+            iniciarCamera();
+        }
+
+        function pararCamera() {
+            if (_camera.stream) _camera.stream.getTracks().forEach(t => t.stop());
+            _camera.stream = null;
+            const video = document.getElementById('camera-video');
+            if (video) video.srcObject = null;
+        }
+
+        function fecharCamera() {
+            pararCamera();
+            const m = document.getElementById('modal-camera');
+            m.classList.add('hidden'); m.classList.remove('flex');
+        }
+
+        async function iniciarCamera(deviceId) {
+            pararCamera();
+            const msg = document.getElementById('camera-msg');
+            const capturar = document.getElementById('camera-capturar');
+            document.getElementById('camera-arquivo').classList.add('hidden');
+            capturar.disabled = true;
+            msg.className = 'text-xs text-slate-500 px-4 pt-3';
+            msg.textContent = 'Abrindo a câmera... Se o navegador pedir, permita o acesso.';
+            const video = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+            if (deviceId) video.deviceId = { exact: deviceId }; else video.facingMode = { ideal: 'environment' };
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+                if (document.getElementById('modal-camera').classList.contains('hidden')) { stream.getTracks().forEach(t => t.stop()); return; }
+                _camera.stream = stream;
+                const el = document.getElementById('camera-video');
+                el.srcObject = stream;
+                try { await el.play(); } catch (e) {}
+                capturar.disabled = false;
+                msg.textContent = 'Enquadre o cupom inteiro, com boa luz e sem reflexo, e clique em Capturar.';
+                try {
+                    _camera.dispositivos = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+                    const ativo = stream.getVideoTracks()[0]?.getSettings?.().deviceId;
+                    const i = _camera.dispositivos.findIndex(d => d.deviceId === ativo);
+                    if (i >= 0) _camera.indice = i;
+                } catch (e) { _camera.dispositivos = []; }
+                document.getElementById('camera-trocar').classList.toggle('hidden', _camera.dispositivos.length < 2);
+            } catch (erro) {
+                const negado = erro && (erro.name === 'NotAllowedError' || erro.name === 'SecurityError');
+                const semCamera = erro && (erro.name === 'NotFoundError' || erro.name === 'OverconstrainedError');
+                msg.className = 'text-xs text-rose-600 px-4 pt-3';
+                msg.textContent = negado ? 'O acesso à câmera foi bloqueado. Libere a câmera para este site (ícone ao lado do endereço) ou envie um arquivo.'
+                    : semCamera ? 'Nenhuma câmera encontrada neste computador. Envie uma foto ou PDF do cupom.'
+                    : `Não foi possível abrir a câmera (${erro && erro.message ? erro.message : erro}). Envie um arquivo.`;
+                document.getElementById('camera-arquivo').classList.remove('hidden');
+            }
+        }
+
+        function trocarCamera() {
+            if (_camera.dispositivos.length < 2) return;
+            _camera.indice = (_camera.indice + 1) % _camera.dispositivos.length;
+            iniciarCamera(_camera.dispositivos[_camera.indice].deviceId);
+        }
+
+        function escolherArquivoNoLugarDaCamera() {
+            const p = _camera.prefixo || 'tx';
+            fecharCamera();
+            document.getElementById(`${p}-cupom-arquivo`).click();
+        }
+
+        async function capturarFotoCamera() {
+            const video = document.getElementById('camera-video');
+            if (!video.videoWidth) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            const p = _camera.prefixo || 'tx';
+            fecharCamera();
+            const agora = new Date();
+            const nome = `cupom_${agora.toLocaleDateString('sv-SE')}_${String(agora.getHours()).padStart(2, '0')}${String(agora.getMinutes()).padStart(2, '0')}.jpg`;
+            try { await processarCupom(p, dataUrl, nome, 'image/jpeg'); }
+            catch (erro) { alert(`Não foi possível usar a foto: ${erro.message}`); }
+        }
+
+        resetarCupom('tx');
+        resetarCupom('lc');
+
+        // Atalhos do app instalado (ex.: "Nova transação" no menu do ícone): ?aba=transacoes
+        (function () {
+            const aba = new URLSearchParams(location.search).get('aba');
+            if (['dashboard', 'transacoes', 'parcelados', 'projecoes', 'cadastros', 'senha'].includes(aba)) switchTab(aba);
+        })();
 
         // =====================================================================
         // Balão: aparece só quando o texto da coluna não cabe por inteiro
@@ -4483,51 +4927,141 @@
             window.addEventListener('scroll', esconder, true);
         })();
     </script>
-<dialog id="instalacao-ajuda" style="border:0;border-radius:20px;padding:24px;max-width:360px;width:calc(100% - 32px);background:#0f172a;color:#fff;box-sizing:border-box;box-shadow:0 20px 60px #0006" aria-labelledby="instalacao-titulo">
-<h2 id="instalacao-titulo" style="font-size:20px;font-weight:700;margin-bottom:12px">Instalar Finanças</h2>
+<dialog id="instalacao-ajuda" style="border:0;border-radius:20px;padding:24px;max-width:440px;width:calc(100% - 32px);background:#0f172a;color:#fff;box-sizing:border-box;box-shadow:0 20px 60px #0006" aria-labelledby="instalacao-titulo">
+<h2 id="instalacao-titulo" style="font-size:20px;font-weight:700;margin-bottom:12px">Instalar FinançasApp</h2>
 <p id="instalacao-texto" style="line-height:1.7;font-size:15px"></p>
+<div id="instalacao-atalhos" hidden style="margin-top:16px;padding-top:14px;border-top:1px solid #334155">
+    <p style="font-size:13px;color:#cbd5e1;line-height:1.6;margin-bottom:10px">Outra opção, em qualquer navegador: baixe um atalho que abre o sistema.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" onclick="baixarAtalhoWindows()" style="padding:9px 14px;background:#1e293b;color:#fff;border:1px solid #334155;border-radius:10px;cursor:pointer;font-size:13px"><i class="fa-brands fa-windows" aria-hidden="true"></i> Atalho Windows</button>
+        <button type="button" onclick="baixarAtalhoLinux()" style="padding:9px 14px;background:#1e293b;color:#fff;border:1px solid #334155;border-radius:10px;cursor:pointer;font-size:13px"><i class="fa-brands fa-linux" aria-hidden="true"></i> Atalho Linux</button>
+    </div>
+    <p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:10px">Windows: salve o arquivo .url na Área de Trabalho. Linux: salve o arquivo .desktop em ~/.local/share/applications para ele aparecer no menu de aplicativos (ou na Área de Trabalho e escolha “Permitir executar”).</p>
+</div>
 <form method="dialog"><button style="margin-top:20px;padding:10px 20px;background:#059669;color:white;border:0;border-radius:10px;cursor:pointer">Entendi</button></form>
 </dialog>
 <script>
 (function () {
+    // Nome exclusivo deste app (atalhos .desktop e prefixo de cache do sw.js), para não se misturar com outros apps instalados.
+    const ID_APP = 'financasapp-controle-gastos';
     let convite = null;
     let instalado = false;
     const botao = document.getElementById('instalar-app');
+    const itemMenu = document.getElementById('menu-instalar-app');
     const modoApp = window.matchMedia('(display-mode: standalone)');
     const modoFull = window.matchMedia('(display-mode: fullscreen)');
-    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const ua = navigator.userAgent;
+    const mobile = /Android|iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const rodandoComoApp = () => modoApp.matches || modoFull.matches || navigator.standalone === true;
+
     function atualizar() {
-        botao.hidden = !mobile || instalado || modoApp.matches || modoFull.matches || navigator.standalone === true;
+        botao.hidden = !mobile || instalado || rodandoComoApp();
+        if (itemMenu) {
+            const esconder = mobile || instalado || rodandoComoApp();
+            itemMenu.classList.toggle('hidden', esconder);
+            itemMenu.classList.toggle('flex', !esconder);
+        }
     }
     window.addEventListener('beforeinstallprompt', function (evento) {
         evento.preventDefault(); convite = evento; atualizar();
     });
     window.addEventListener('appinstalled', function () { instalado = true; convite = null; atualizar(); });
     [modoApp, modoFull].forEach(function (modo) { if (modo.addEventListener) modo.addEventListener('change', atualizar); });
+
+    async function abrirConvite() {
+        if (!convite) return false;
+        const evento = convite; convite = null;
+        try {
+            await evento.prompt();
+            const escolha = await evento.userChoice;
+            if (escolha.outcome === 'accepted') { instalado = true; atualizar(); }
+            return true;
+        } catch (erro) { return false; /* mostra instruções quando o navegador não abrir o convite */ }
+    }
+
+    function mostrarAjuda(texto, comAtalhos) {
+        document.getElementById('instalacao-texto').textContent = texto;
+        document.getElementById('instalacao-atalhos').hidden = !comAtalhos;
+        document.getElementById('instalacao-ajuda').showModal();
+    }
+
+    const arquivoLocal = () => !window.isSecureContext || location.protocol === 'file:';
+
     window.instalarAppCelular = async function () {
-        if (convite) {
-            const evento = convite; convite = null;
-            try {
-                await evento.prompt();
-                const escolha = await evento.userChoice;
-                if (escolha.outcome === 'accepted') { instalado = true; atualizar(); }
-                return;
-            } catch (erro) { /* mostra instruções quando o navegador não abrir o convite */ }
-        }
-        const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (await abrirConvite()) return;
+        const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         let texto;
-        if (!window.isSecureContext || location.protocol === 'file:') {
+        if (arquivoLocal()) {
             texto = 'Para instalar, abra o sistema pelo endereço HTTPS do site no navegador do celular. Arquivos abertos diretamente pelo gerenciador de arquivos não permitem a instalação completa.';
         } else if (ios) {
             texto = 'No Safari, toque em Compartilhar e escolha “Adicionar à Tela de Início”. Se aparecer, ative “Abrir como App” e toque em Adicionar. Se estiver em outro navegador, abra este endereço no Safari.';
         } else {
             texto = 'No Chrome do Android, abra o menu ⋮ e toque em “Instalar app” ou “Adicionar à tela inicial”. Se a opção não aparecer, atualize a página e abra o endereço diretamente no Chrome, fora de aplicativos como WhatsApp ou Instagram.';
         }
-        document.getElementById('instalacao-texto').textContent = texto;
-        document.getElementById('instalacao-ajuda').showModal();
+        mostrarAjuda(texto, false);
     };
+
+    // Instalação no computador (Windows e Linux) pelo menu lateral
+    window.instalarAppComputador = async function () {
+        if (await abrirConvite()) return;
+        const so = /Windows/i.test(ua) ? 'Windows' : /Linux|X11|CrOS/i.test(ua) ? 'Linux' : /Mac OS/i.test(ua) ? 'macOS' : 'computador';
+        const ondeFica = so === 'Windows' ? 'no menu Iniciar (e pode ser fixado na barra de tarefas)'
+            : so === 'Linux' ? 'no menu de aplicativos do sistema' : 'na lista de aplicativos';
+        const edge = /Edg\//.test(ua);
+        const firefox = /Firefox\//.test(ua);
+        const opera = /OPR\//.test(ua);
+        const chromium = /Chrome\/|Chromium\//.test(ua) && !edge && !opera;
+        let texto;
+        if (arquivoLocal()) {
+            texto = 'Para instalar como aplicativo, abra o sistema pelo endereço HTTPS do site (não pelo arquivo salvo no computador). Enquanto isso, você pode baixar um atalho abaixo.';
+        } else if (edge) {
+            texto = `No Microsoft Edge (${so}): clique no menu “…” no canto superior direito › Aplicativos › “Instalar este site como um aplicativo”. O FinançasApp abre em janela própria e fica ${ondeFica}. Se a opção não aparecer, ele provavelmente já está instalado: procure “FinançasApp” ${ondeFica}.`;
+        } else if (chromium) {
+            texto = `No Chrome ou Chromium (${so}): clique no ícone de instalar (monitor com seta) no fim da barra de endereço, ou no menu ⋮ › “Transmitir, salvar e compartilhar” › “Instalar página como app”. O FinançasApp abre em janela própria e fica ${ondeFica}. Se a opção não aparecer, ele provavelmente já está instalado.`;
+        } else if (firefox) {
+            texto = 'O Firefox não instala sites como aplicativo. Abra este mesmo endereço no Google Chrome, Chromium ou Microsoft Edge (disponíveis para Windows e Linux) e clique de novo em “Instalar app no PC”, ou baixe um atalho abaixo.';
+        } else {
+            texto = 'Este navegador não oferece instalação de aplicativos. Use o Google Chrome, Chromium ou Microsoft Edge (Windows e Linux), ou baixe um atalho abaixo.';
+        }
+        mostrarAjuda(texto, true);
+    };
+
+    function enderecoApp() {
+        const u = new URL(location.href);
+        u.hash = ''; u.search = '';
+        return u.href;
+    }
+    function baixarArquivo(nome, conteudo, mime) {
+        const url = URL.createObjectURL(new Blob([conteudo], { type: mime }));
+        const a = document.createElement('a');
+        a.href = url; a.download = nome;
+        document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+    }
+    window.baixarAtalhoWindows = function () {
+        baixarArquivo('FinancasApp - Controle de Gastos.url', `[InternetShortcut]\r\nURL=${enderecoApp()}\r\n`, 'application/internet-shortcut');
+    };
+    window.baixarAtalhoLinux = function () {
+        const destino = enderecoApp().replace(/%/g, '%%'); // "%" precisa ser duplicado em arquivos .desktop
+        const conteudo = [
+            '[Desktop Entry]',
+            'Version=1.0',
+            'Type=Application',
+            'Name=FinançasApp – Controle de Gastos',
+            'GenericName=Controle financeiro pessoal',
+            'Comment=Sistema Financeiro Pessoal',
+            `Exec=xdg-open "${destino}"`,
+            'Icon=accessories-calculator',
+            'Terminal=false',
+            'Categories=Office;Finance;',
+            `StartupWMClass=${ID_APP}`,
+            ''
+        ].join('\n');
+        baixarArquivo(`${ID_APP}.desktop`, conteudo, 'application/x-desktop');
+    };
+
     if ('serviceWorker' in navigator && window.isSecureContext && /^https?:$/.test(location.protocol)) {
-        navigator.serviceWorker.register('./sw.js').catch(function () { /* instruções manuais continuam disponíveis */ });
+        navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () { /* instruções manuais continuam disponíveis */ });
     }
     atualizar();
 })();

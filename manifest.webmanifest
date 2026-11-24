@@ -1,13 +1,20 @@
 {
   "id": "./",
-  "name": "Controle de Gastos Pessoais",
-  "short_name": "Finanças",
+  "name": "FinançasApp – Controle de Gastos",
+  "short_name": "FinançasApp",
+  "description": "Sistema Financeiro Pessoal: transações, parcelas, projeções e cupons fiscais.",
   "lang": "pt-BR",
+  "dir": "ltr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
+  "categories": [
+    "finance",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "./icons/icon-192.png",
@@ -20,6 +27,29 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nova transação",
+      "short_name": "Transação",
+      "url": "./?aba=transacoes",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Projeções",
+      "url": "./?aba=projecoes",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
