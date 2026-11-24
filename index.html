@@ -200,7 +200,7 @@
         // Dispara o carregamento inicial assim que o Firebase conectar
         window.carregarDadosFirestore();
     </script>
-<link rel="manifest" href="./manifest.webmanifest?v=1.27">
+<link rel="manifest" href="./manifest.webmanifest?v=1.28">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 </head>
@@ -225,7 +225,7 @@
                 </div>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800">
-                Controle Financeiro v1.27 (Firebase)
+                Controle Financeiro v1.28 (Firebase)
             </div>
         </div>
 
@@ -334,7 +334,7 @@
                 </button>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800 flex justify-between items-center">
-                <span>v1.27</span>
+                <span>v1.28</span>
                 <button onclick="bloquearSistema()" class="text-slate-400 hover:text-white cursor-pointer" title="Bloquear Sistema"><i class="fa-solid fa-lock"></i> Sair</button>
             </div>
         </aside>
@@ -878,6 +878,14 @@
                             <button type="button" onclick="exportarBackupExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold"><i class="fa-solid fa-file-excel mr-2"></i>Baixar backup Excel</button>
                             <label for="arquivo-backup" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-2"></i>Restaurar backup</label>
                             <input id="arquivo-backup" type="file" accept=".xlsx" onchange="restaurarBackupExcel(event)" class="sr-only">
+                        </div>
+                        <div class="mt-5 pt-4 border-t border-slate-100">
+                            <div class="flex items-center justify-between gap-2 mb-1">
+                                <h4 class="text-sm font-bold text-slate-700"><i class="fa-solid fa-clock-rotate-left text-emerald-600 mr-1"></i>Cópias automáticas (últimos 30 dias)</h4>
+                                <button type="button" onclick="carregarListaCopias()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"><i class="fa-solid fa-rotate mr-1"></i>Atualizar</button>
+                            </div>
+                            <p class="text-xs text-slate-500 mb-3">O sistema guarda sozinho uma cópia por dia, na primeira vez que é aberto no dia. Ao restaurar uma cópia, os dados atuais também são guardados antes, para você poder desfazer.</p>
+                            <div id="lista-copias" class="text-sm text-slate-500">Abra esta tela para ver as cópias.</div>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1493,6 +1501,109 @@
         //  os dados padrão podiam ser gravados por cima de tudo.)
         let dadosCarregados = false;
         let transacoesNoServidor = 0;
+        let _backupDiarioVerificado = false;
+
+        // =====================================================================
+        // Cópias automáticas no Firestore: dados_financeiros/backup_AAAA-MM-DD (uma por dia, guarda 30)
+        // e dados_financeiros/backup_indice (lista das cópias, para não precisar ler a coleção inteira)
+        // =====================================================================
+        const BACKUP_DIAS_GUARDADOS = 30;
+        const BACKUP_ANTES_RESTAURACAO_GUARDADOS = 5;
+
+        async function lerIndiceCopias() {
+            const snap = await window.getDoc(window.cupomDocRef('backup_indice'));
+            if (!snap.exists()) return [];
+            try { const itens = JSON.parse(snap.data().itens || '[]'); return Array.isArray(itens) ? itens : []; } catch (e) { return []; }
+        }
+
+        // Grava uma cópia no índice e apaga as mais antigas além do limite
+        async function registrarCopia(id, conteudo, tipo) {
+            const dados = JSON.parse(conteudo);
+            const criadoEm = new Date().toISOString();
+            const qtd = Array.isArray(dados.transacoes) ? dados.transacoes.length : 0;
+            await window.setDoc(window.cupomDocRef(id), { tipoDocumento: 'backup_automatico', tipo, conteudo, transacoes: qtd, criadoEm });
+            let itens = (await lerIndiceCopias()).filter(i => i.id !== id);
+            itens.push({ id, tipo, transacoes: qtd, criadoEm });
+            itens.sort((a, b) => b.id.localeCompare(a.id));
+            const manter = [], apagar = [];
+            let diarios = 0, antes = 0;
+            itens.forEach(i => {
+                const limite = i.tipo === 'antes_restauracao' ? (++antes <= BACKUP_ANTES_RESTAURACAO_GUARDADOS) : (++diarios <= BACKUP_DIAS_GUARDADOS);
+                (limite ? manter : apagar).push(i);
+            });
+            await window.setDoc(window.cupomDocRef('backup_indice'), { tipoDocumento: 'indice_backups', itens: JSON.stringify(manter), atualizadoEm: criadoEm });
+            apagar.forEach(i => window.deleteDoc(window.cupomDocRef(i.id)).catch(erro => console.warn('Não foi possível apagar a cópia antiga', i.id, erro)));
+        }
+
+        // Uma vez por dia, na primeira abertura: guarda os dados como chegaram do servidor
+        async function fazerBackupAutomatico(conteudo) {
+            try {
+                if (!window.getDoc || !window.setDoc || !window.cupomDocRef) return;
+                const dados = JSON.parse(conteudo);
+                if (!Array.isArray(dados.transacoes) || dados.transacoes.length === 0) return; // não guarda banco vazio
+                const id = `backup_${new Date().toLocaleDateString('sv-SE')}`;
+                const existente = await window.getDoc(window.cupomDocRef(id));
+                if (existente.exists()) return;
+                await registrarCopia(id, conteudo, 'diario');
+                console.info('Cópia automática do dia criada:', id);
+            } catch (erro) {
+                console.warn('Não foi possível criar a cópia automática do dia:', erro);
+            }
+        }
+
+        function descreverCopia(item) {
+            const quando = new Date(item.criadoEm);
+            const hora = isNaN(quando) ? '' : quando.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            if (item.tipo === 'antes_restauracao') return `Antes da restauração de ${hora}`;
+            const [a, m, d] = item.id.replace('backup_', '').split('-');
+            return `Cópia de ${d}/${m}/${a}` + (hora ? ` <span class="text-slate-400 text-xs">(${hora.split(' ')[1] || ''})</span>` : '');
+        }
+
+        async function carregarListaCopias() {
+            const el = document.getElementById('lista-copias');
+            if (!el) return;
+            if (!window.getDoc || !window.cupomDocRef) { el.textContent = 'Sem conexão com o banco de dados.'; return; }
+            el.innerHTML = '<span class="text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Carregando cópias...</span>';
+            try {
+                const itens = await lerIndiceCopias();
+                if (!itens.length) { el.innerHTML = '<span class="text-slate-500 italic">Nenhuma cópia ainda. A primeira é criada automaticamente ao abrir o sistema.</span>'; return; }
+                el.innerHTML = `<div class="max-h-72 overflow-y-auto border border-slate-100 rounded-lg divide-y divide-slate-100">${itens.map(i => `
+                    <div class="flex items-center justify-between gap-3 px-3 py-2">
+                        <div class="min-w-0"><div class="text-slate-700 font-medium">${i.tipo === 'antes_restauracao' ? '<i class="fa-solid fa-rotate-left text-amber-500 mr-1"></i>' : '<i class="fa-regular fa-calendar-check text-emerald-600 mr-1"></i>'}${descreverCopia(i)}</div>
+                        <div class="text-xs text-slate-400">${i.transacoes} transação(ões)</div></div>
+                        <button type="button" onclick="restaurarCopiaAutomatica('${i.id}')" class="flex-shrink-0 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Restaurar</button>
+                    </div>`).join('')}</div>`;
+            } catch (erro) {
+                el.innerHTML = `<span class="text-rose-600">Não foi possível carregar as cópias: ${escapeHtml(erro.message || String(erro))}</span>`;
+            }
+        }
+
+        async function restaurarCopiaAutomatica(id) {
+            try {
+                if (!dadosCarregados) throw new Error('aguarde os dados carregarem do servidor');
+                const snap = await window.getDoc(window.cupomDocRef(id));
+                if (!snap.exists()) throw new Error('a cópia não foi encontrada');
+                const conteudo = snap.data().conteudo;
+                const dados = JSON.parse(conteudo);
+                validarDadosBackup(dados);
+                const item = { id, tipo: snap.data().tipo, criadoEm: snap.data().criadoEm };
+                const rotulo = descreverCopia(item).replace(/<[^>]+>/g, '');
+                if (!confirm(`Restaurar "${rotulo}" com ${dados.transacoes.length} transação(ões)?\n\nOs dados atuais (${db.transacoes.length} transações) serão substituídos, mas antes ficam guardados como "Antes da restauração", para você poder desfazer.`)) return;
+                const agora = new Date();
+                const idAntes = `backup_antes-restauracao_${agora.toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`;
+                await registrarCopia(idAntes, JSON.stringify(db), 'antes_restauracao');
+                await window.setDoc(window.docRef, { conteudo });
+                db = dados;
+                transacoesNoServidor = dados.transacoes.length;
+                normalizarBancoDados();
+                initApp();
+                carregarListaCopias();
+                alert('Cópia restaurada com sucesso.');
+            } catch (erro) {
+                console.error('Falha ao restaurar a cópia automática:', erro);
+                alert(`Não foi possível restaurar a cópia: ${erro.message || erro}`);
+            }
+        }
 
         // Função para carregar e escutar dados do Firebase em tempo real
         function carregarDadosFirestore() {
@@ -1506,6 +1617,7 @@
                         transacoesNoServidor = Array.isArray(db.transacoes) ? db.transacoes.length : 0;
                         normalizarBancoDados();
                         initApp();
+                        if (!_backupDiarioVerificado) { _backupDiarioVerificado = true; fazerBackupAutomatico(dadosRemotos.conteudo); }
                     }
                 } else if (docSnap.metadata && docSnap.metadata.fromCache) {
                     // Sem resposta do servidor (offline/conexão lenta): NÃO cria dados padrão
@@ -1656,6 +1768,7 @@
         }
 
         function switchTab(tabId) {
+            if (tabId === 'cadastros' && dadosCarregados) setTimeout(carregarListaCopias, 0);
             ['dashboard', 'transacoes', 'parcelados', 'projecoes', 'cadastros', 'senha'].forEach(t => {
                 const el = document.getElementById(`tab-${t}`);
                 const btn = document.getElementById(`btn-${t}`);
