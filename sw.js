@@ -5,11 +5,11 @@
  *  - não intercepta Firebase, CDNs nem outros domínios (os dados continuam sempre online).
  */
 const PREFIXO_CACHE = 'financasapp-controle-gastos-';
-const CACHE_ATUAL = PREFIXO_CACHE + 'v1.28';
+const CACHE_ATUAL = PREFIXO_CACHE + 'v1.29';
 const ARQUIVOS_BASE = [
   './',
   './index.html',
-  './manifest.webmanifest?v=1.28',
+  './manifest.webmanifest?v=1.29',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];

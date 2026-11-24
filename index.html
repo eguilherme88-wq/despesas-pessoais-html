@@ -200,7 +200,7 @@
         // Dispara o carregamento inicial assim que o Firebase conectar
         window.carregarDadosFirestore();
     </script>
-<link rel="manifest" href="./manifest.webmanifest?v=1.28">
+<link rel="manifest" href="./manifest.webmanifest?v=1.29">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 </head>
@@ -225,7 +225,7 @@
                 </div>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800">
-                Controle Financeiro v1.28 (Firebase)
+                Controle Financeiro v1.29 (Firebase)
             </div>
         </div>
 
@@ -334,7 +334,7 @@
                 </button>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800 flex justify-between items-center">
-                <span>v1.28</span>
+                <span>v1.29</span>
                 <button onclick="bloquearSistema()" class="text-slate-400 hover:text-white cursor-pointer" title="Bloquear Sistema"><i class="fa-solid fa-lock"></i> Sair</button>
             </div>
         </aside>
@@ -873,11 +873,11 @@
                 <section id="tab-cadastros" class="space-y-6 hidden">
                     <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100">
                         <h3 class="text-base font-bold text-slate-800 mb-2"><i class="fa-solid fa-database text-emerald-600 mr-2"></i>Backup e restauração</h3>
-                        <p class="text-xs text-slate-500 mb-4">Baixe uma cópia completa em Excel. Para recuperar os dados, selecione um backup gerado por este sistema. A restauração substitui os dados atuais. O arquivo inclui a senha interna do sistema; guarde-o em local seguro.</p>
+                        <p class="text-xs text-slate-500 mb-4">Baixe uma cópia completa em Excel. Para recuperar os dados, use "Restaurar backup" e escolha um backup em Excel gerado por este sistema ou um arquivo .json do backup diário do GitHub (repositório backup-financas, pasta backups). A restauração substitui os dados atuais. O arquivo inclui a senha interna do sistema; guarde-o em local seguro.</p>
                         <div class="flex flex-wrap items-center gap-3">
                             <button type="button" onclick="exportarBackupExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold"><i class="fa-solid fa-file-excel mr-2"></i>Baixar backup Excel</button>
                             <label for="arquivo-backup" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-2"></i>Restaurar backup</label>
-                            <input id="arquivo-backup" type="file" accept=".xlsx" onchange="restaurarBackupExcel(event)" class="sr-only">
+                            <input id="arquivo-backup" type="file" accept=".xlsx,.json,application/json" onchange="restaurarBackupExcel(event)" class="sr-only">
                         </div>
                         <div class="mt-5 pt-4 border-t border-slate-100">
                             <div class="flex items-center justify-between gap-2 mb-1">
@@ -1712,8 +1712,42 @@
             const arquivo = campo.files?.[0];
             if (!arquivo) return;
             try {
+                const nomeArquivo = arquivo.name.toLowerCase();
+                if (arquivo.size > 32 * 1024 * 1024) throw new Error('O arquivo passa de 32 MB.');
+                let dados;
+                if (nomeArquivo.endsWith('.json')) {
+                    // Arquivo do backup diário do GitHub (repositório backup-financas, pasta backups/)
+                    try { dados = JSON.parse(await arquivo.text()); }
+                    catch (e) { throw new Error('O arquivo .json está corrompido ou não é um backup do FinançasApp.'); }
+                    validarDadosBackup(dados);
+                } else if (nomeArquivo.endsWith('.xlsx')) {
+                    dados = await lerBackupExcel(arquivo);
+                } else {
+                    throw new Error('Selecione um backup em Excel (.xlsx) ou um arquivo do backup do GitHub (.json).');
+                }
+                if (!confirm(`Restaurar ${dados.transacoes.length} transação(ões) e todos os cadastros de ${arquivo.name}?\n\nOs dados atuais (${db.transacoes.length} transações) serão substituídos, mas antes ficam guardados em "Cópias automáticas" como "Antes da restauração", para você poder desfazer.`)) return;
+                if (!window.setDoc || !window.docRef) throw new Error('A conexão com o banco de dados não está disponível. Tente novamente quando estiver conectado.');
+                if (dadosCarregados && Array.isArray(db.transacoes) && db.transacoes.length > 0) {
+                    const idAntes = `backup_antes-restauracao_${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`;
+                    try { await registrarCopia(idAntes, JSON.stringify(db), 'antes_restauracao'); }
+                    catch (e) { if (!confirm('Não foi possível guardar uma cópia dos dados atuais antes de restaurar. Continuar mesmo assim?')) return; }
+                }
+                await window.setDoc(window.docRef, { conteudo: JSON.stringify(dados) });
+                db = dados;
+                dadosCarregados = true;
+                transacoesNoServidor = dados.transacoes.length;
+                normalizarBancoDados();
+                initApp();
+                carregarListaCopias();
+                alert('Backup restaurado com sucesso.');
+            } catch (erro) {
+                console.error('Falha na restauração:', erro);
+                alert(`Não foi possível restaurar o backup: ${erro.message}`);
+            } finally { campo.value = ''; }
+        }
+
+        async function lerBackupExcel(arquivo) {
                 if (!window.XLSX) throw new Error('O recurso de Excel não carregou. Verifique a conexão.');
-                if (!arquivo.name.toLowerCase().endsWith('.xlsx') || arquivo.size > 32 * 1024 * 1024) throw new Error('Selecione um backup .xlsx de até 32 MB.');
                 const livro = XLSX.read(await arquivo.arrayBuffer(), { type: 'array' });
                 if (!livro.Sheets.Informacoes || !livro.Sheets.DadosBackup) throw new Error('Este arquivo não é um backup do FinançasApp.');
                 const info = XLSX.utils.sheet_to_json(livro.Sheets.Informacoes, { header: 1, raw: true });
@@ -1729,19 +1763,7 @@
                 const dados = JSON.parse(jsonBackup);
                 validarDadosBackup(dados);
                 if (dados.transacoes.length !== Number(propriedades['Transações'])) throw new Error('A quantidade de transações não confere.');
-                if (!confirm(`Restaurar ${dados.transacoes.length} transação(ões) e todos os cadastros de ${arquivo.name}? Os dados atuais serão substituídos.`)) return;
-                if (!window.setDoc || !window.docRef) throw new Error('A conexão com o banco de dados não está disponível. Tente novamente quando estiver conectado.');
-                await window.setDoc(window.docRef, { conteudo: JSON.stringify(dados) });
-                db = dados;
-                dadosCarregados = true;
-                transacoesNoServidor = dados.transacoes.length;
-                normalizarBancoDados();
-                initApp();
-                alert('Backup restaurado com sucesso.');
-            } catch (erro) {
-                console.error('Falha na restauração:', erro);
-                alert(`Não foi possível restaurar o backup: ${erro.message}`);
-            } finally { campo.value = ''; }
+                return dados;
         }
 
         function saveData() {
