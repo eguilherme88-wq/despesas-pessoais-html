@@ -200,7 +200,7 @@
         // Dispara o carregamento inicial assim que o Firebase conectar
         window.carregarDadosFirestore();
     </script>
-<link rel="manifest" href="./manifest.webmanifest?v=1.25">
+<link rel="manifest" href="./manifest.webmanifest?v=1.26">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 </head>
@@ -225,7 +225,7 @@
                 </div>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800">
-                Controle Financeiro v1.25 (Firebase)
+                Controle Financeiro v1.26 (Firebase)
             </div>
         </div>
 
@@ -334,7 +334,7 @@
                 </button>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800 flex justify-between items-center">
-                <span>v1.25</span>
+                <span>v1.26</span>
                 <button onclick="bloquearSistema()" class="text-slate-400 hover:text-white cursor-pointer" title="Bloquear Sistema"><i class="fa-solid fa-lock"></i> Sair</button>
             </div>
         </aside>
@@ -534,14 +534,13 @@
                                 <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-receipt mr-1 text-emerald-600"></i>Cupom fiscal <span class="font-normal text-slate-400">(opcional)</span></label>
                                 <div class="flex flex-wrap items-center gap-2 border border-dashed border-slate-300 rounded-lg p-2.5 bg-slate-50">
                                     <button type="button" onclick="tirarFotoCupom('tx')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-camera mr-1"></i>Tirar foto</button>
-                                    <button type="button" onclick="document.getElementById('tx-cupom-galeria').click()" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer" title="Escolher uma foto da galeria"><i class="fa-solid fa-images mr-1"></i>Galeria</button>
-                                    <button type="button" onclick="document.getElementById('tx-cupom-arquivo').click()" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-1"></i>Enviar arquivo</button>
+                                    <button type="button" onclick="enviarArquivoCupom('tx')" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-1"></i>Enviar arquivo</button>
                                     <input type="file" id="tx-cupom-arquivo" accept="image/*,application/pdf,.pdf" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('tx', this)">
                                     <input type="file" id="tx-cupom-camera" accept="image/*" capture="environment" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('tx', this)">
                                     <input type="file" id="tx-cupom-galeria" accept="image/*" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('tx', this)">
                                     <div id="tx-cupom-preview" class="flex flex-wrap items-center gap-2 min-w-0"></div>
                                 </div>
-                                <p class="text-[11px] text-slate-500 mt-1">Tire a foto, escolha da galeria ou envie um arquivo (foto ou PDF de até 650 KB). As fotos são reduzidas automaticamente.</p>
+                                <p class="text-[11px] text-slate-500 mt-1">Tire a foto ou envie um arquivo da galeria ou do aparelho (foto ou PDF de até 650 KB). As fotos são reduzidas automaticamente.</p>
                             </div>
                             <div class="sm:col-span-2 md:col-span-3 flex flex-col sm:flex-row justify-end gap-2 pt-2">
                                 <button type="button" id="btn-cancelar-edicao" onclick="cancelarEdicao()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">Cancelar</button>
@@ -1163,8 +1162,7 @@
                     <label class="block text-xs font-semibold text-slate-600 mb-1"><i class="fa-solid fa-receipt mr-1 text-emerald-600"></i>Cupom fiscal <span class="font-normal text-slate-400">(opcional)</span></label>
                     <div class="flex flex-wrap items-center gap-2 border border-dashed border-slate-300 rounded-lg p-2.5 bg-slate-50">
                         <button type="button" onclick="tirarFotoCupom('lc')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-camera mr-1"></i>Tirar foto</button>
-                        <button type="button" onclick="document.getElementById('lc-cupom-galeria').click()" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer" title="Escolher uma foto da galeria"><i class="fa-solid fa-images mr-1"></i>Galeria</button>
-                                    <button type="button" onclick="document.getElementById('lc-cupom-arquivo').click()" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-1"></i>Enviar arquivo</button>
+                        <button type="button" onclick="enviarArquivoCupom('lc')" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"><i class="fa-solid fa-file-arrow-up mr-1"></i>Enviar arquivo</button>
                         <input type="file" id="lc-cupom-arquivo" accept="image/*,application/pdf,.pdf" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('lc', this)">
                         <input type="file" id="lc-cupom-camera" accept="image/*" capture="environment" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('lc', this)">
                                     <input type="file" id="lc-cupom-galeria" accept="image/*" class="sr-only" tabindex="-1" onchange="aoEscolherArquivoCupom('lc', this)">
@@ -1190,6 +1188,16 @@
                 </div>
             </div>
             <div id="cupom-corpo" class="p-4 overflow-auto min-h-0 flex-1 flex items-center justify-center"></div>
+        </div>
+    </div>
+
+    <!-- MENU: origem do arquivo do cupom (celular) -->
+    <div id="modal-origem-cupom" class="modal-fundo fixed inset-0 z-[78] hidden items-end sm:items-center justify-center bg-slate-900/60 p-3" onclick="if (event.target === this) fecharOrigemCupom()">
+        <div class="modal-caixa bg-white rounded-2xl shadow-xl w-full max-w-sm p-3 space-y-2">
+            <p class="text-sm font-bold text-slate-800 px-2 pt-1 pb-1">Enviar cupom fiscal</p>
+            <button type="button" onclick="escolherOrigemCupom('galeria')" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-sm cursor-pointer text-left"><i class="fa-solid fa-images text-lg w-6"></i>Galeria de fotos</button>
+            <button type="button" onclick="escolherOrigemCupom('arquivo')" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-sm cursor-pointer text-left"><i class="fa-solid fa-file-pdf text-lg w-6"></i>Arquivos (foto ou PDF)</button>
+            <button type="button" onclick="fecharOrigemCupom()" class="w-full px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 text-sm font-medium cursor-pointer">Cancelar</button>
         </div>
     </div>
 
@@ -4565,6 +4573,7 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (!document.getElementById('modal-camera').classList.contains('hidden')) { fecharCamera(); return; }
+                if (!document.getElementById('modal-origem-cupom').classList.contains('hidden')) { fecharOrigemCupom(); return; }
                 if (!document.getElementById('modal-cupom').classList.contains('hidden')) { fecharModalCupom(); return; }
                 fecharModalLancamentoCategoria(); fecharDetalheDashboard(); fecharDicaTelaCheia();
             }
@@ -4793,6 +4802,24 @@
             if (!novo) return;
             abrirModalCupom();
             await mostrarArquivoCupom(novo.nome, novo.mime, novo.dataUrl);
+        }
+
+        // "Enviar arquivo": no celular pergunta se é da galeria ou dos arquivos; no PC abre direto
+        let _origemCupomPrefixo = 'tx';
+        function enviarArquivoCupom(p) {
+            if (!toqueEhPrincipal()) { document.getElementById(`${p}-cupom-arquivo`).click(); return; }
+            _origemCupomPrefixo = p;
+            const m = document.getElementById('modal-origem-cupom');
+            m.classList.remove('hidden'); m.classList.add('flex');
+        }
+        function fecharOrigemCupom() {
+            const m = document.getElementById('modal-origem-cupom');
+            m.classList.add('hidden'); m.classList.remove('flex');
+        }
+        function escolherOrigemCupom(origem) {
+            const p = _origemCupomPrefixo;
+            fecharOrigemCupom();
+            document.getElementById(`${p}-cupom-${origem === 'galeria' ? 'galeria' : 'arquivo'}`).click();
         }
 
         // ---------- Câmera ----------
