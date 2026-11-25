@@ -200,7 +200,7 @@
         // Dispara o carregamento inicial assim que o Firebase conectar
         window.carregarDadosFirestore();
     </script>
-<link rel="manifest" href="./manifest.webmanifest?v=1.29">
+<link rel="manifest" href="./manifest.webmanifest?v=1.30">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 </head>
@@ -225,7 +225,7 @@
                 </div>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800">
-                Controle Financeiro v1.29 (Firebase)
+                Controle Financeiro v1.30 (Firebase)
             </div>
         </div>
 
@@ -247,6 +247,9 @@
                     </div>
                     <button type="button" onclick="verificarSenha()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-xl text-sm transition shadow-sm cursor-pointer">
                         Entrar no Sistema
+                    </button>
+                    <button type="button" id="btn-entrar-biometria" onclick="entrarComBiometria()" class="hidden w-full items-center justify-center gap-2 bg-white border border-emerald-500 text-emerald-700 hover:bg-emerald-50 font-semibold py-3 rounded-xl text-sm transition cursor-pointer">
+                        <i class="fa-solid fa-fingerprint text-lg"></i> Entrar com biometria
                     </button>
                     <div class="text-center pt-2">
                         <button type="button" onclick="mostrarPainelAlterarSenha()" class="text-xs text-slate-500 hover:text-indigo-600 underline cursor-pointer">
@@ -334,7 +337,7 @@
                 </button>
             </div>
             <div class="p-5 text-xs text-slate-500 border-t border-slate-800 flex justify-between items-center">
-                <span>v1.29</span>
+                <span>v1.30</span>
                 <button onclick="bloquearSistema()" class="text-slate-400 hover:text-white cursor-pointer" title="Bloquear Sistema"><i class="fa-solid fa-lock"></i> Sair</button>
             </div>
         </aside>
@@ -987,6 +990,15 @@
                             <button type="button" onclick="alterarSenhaInterna()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg text-sm transition cursor-pointer">Atualizar Senha</button>
                         </div>
                     </div>
+                    <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 max-w-lg mx-auto">
+                        <h3 class="text-base font-bold text-slate-800 mb-2"><i class="fa-solid fa-fingerprint mr-2 text-emerald-600"></i>Acesso por biometria</h3>
+                        <p class="text-xs text-slate-500 mb-4">Entre com a digital ou o reconhecimento de rosto deste aparelho, sem digitar a senha. A ativação vale só para este aparelho e a sua biometria nunca sai dele. A senha continua funcionando.</p>
+                        <p id="biometria-status" class="text-sm text-slate-700 mb-4"></p>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" id="btn-ativar-biometria" onclick="ativarBiometria()" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer"><i class="fa-solid fa-fingerprint mr-1"></i>Ativar neste aparelho</button>
+                            <button type="button" id="btn-desativar-biometria" onclick="desativarBiometria()" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer"><i class="fa-solid fa-ban mr-1"></i>Desativar neste aparelho</button>
+                        </div>
+                    </div>
                 </section>
 
             </div>
@@ -1199,6 +1211,21 @@
         </div>
     </div>
 
+    <!-- AVISO: oferecer biometria depois de entrar com a senha -->
+    <div id="aviso-biometria" class="hidden fixed z-[70] left-3 right-3 bottom-20 md:bottom-6 md:left-auto md:right-6 md:w-96 bg-slate-900 text-white rounded-2xl shadow-2xl p-4 flex-col gap-3" role="dialog" aria-labelledby="aviso-biometria-titulo">
+        <div class="flex gap-3 items-start">
+            <i class="fa-solid fa-fingerprint text-2xl text-emerald-400 mt-0.5"></i>
+            <div>
+                <p id="aviso-biometria-titulo" class="font-semibold text-sm">Entrar com digital ou rosto?</p>
+                <p class="text-xs text-slate-300 mt-1">Nas próximas vezes, neste aparelho, você entra sem digitar a senha. Dá para mudar depois em "Alterar Senha".</p>
+            </div>
+        </div>
+        <div class="flex gap-2 justify-end">
+            <button type="button" onclick="fecharAvisoBiometria(true)" class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800 cursor-pointer">Agora não</button>
+            <button type="button" onclick="ativarBiometriaPeloAviso()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 cursor-pointer">Ativar biometria</button>
+        </div>
+    </div>
+
     <!-- MENU: origem do arquivo do cupom (celular) -->
     <div id="modal-origem-cupom" class="modal-fundo fixed inset-0 z-[78] hidden items-end sm:items-center justify-center bg-slate-900/60 p-3" onclick="if (event.target === this) fecharOrigemCupom()">
         <div class="modal-caixa bg-white rounded-2xl shadow-xl w-full max-w-sm p-3 space-y-2">
@@ -1383,11 +1410,8 @@
             let senhaSalva = db.senha || '1234';
 
             if (senhaDigitada === senhaSalva) {
-                const splash = document.getElementById('splash-screen');
-                if (splash) {
-                    splash.style.opacity = '0';
-                    setTimeout(() => splash.remove(), 500);
-                }
+                liberarAcesso();
+                oferecerBiometriaAposLogin();
             } else {
                 alert('Senha incorreta! A senha padrão inicial é 1234.');
                 document.getElementById('input-senha-acesso').value = '';
@@ -1468,6 +1492,144 @@
         function bloquearSistema() {
             location.reload();
         }
+
+        function liberarAcesso() {
+            const splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.style.opacity = '0';
+                setTimeout(() => splash.remove(), 500);
+            }
+        }
+
+        // =====================================================================
+        // Acesso por biometria (WebAuthn / chave de acesso do próprio aparelho)
+        // A credencial fica no aparelho; aqui guardamos só o identificador dela.
+        // =====================================================================
+        const CHAVE_BIOMETRIA = 'financasapp:biometria';
+        const CHAVE_BIOMETRIA_RECUSADA = 'financasapp:biometria-recusada';
+
+        function lerBiometriaSalva() {
+            try { const v = JSON.parse(localStorage.getItem(CHAVE_BIOMETRIA) || 'null'); return v && v.id ? v : null; } catch (e) { return null; }
+        }
+        function paraBase64Url(buffer) {
+            return btoa(String.fromCharCode(...new Uint8Array(buffer))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+        function deBase64Url(texto) {
+            const b64 = texto.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((texto.length + 3) % 4);
+            return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        }
+        function bytesAleatorios(n) { return crypto.getRandomValues(new Uint8Array(n)); }
+
+        async function biometriaDisponivel() {
+            try {
+                return !!(window.isSecureContext && window.PublicKeyCredential
+                    && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+            } catch (e) { return false; }
+        }
+
+        async function atualizarTelaBiometria() {
+            const disponivel = await biometriaDisponivel();
+            const salva = lerBiometriaSalva();
+            const btnEntrar = document.getElementById('btn-entrar-biometria');
+            if (btnEntrar) { const mostrar = disponivel && !!salva; btnEntrar.classList.toggle('hidden', !mostrar); btnEntrar.classList.toggle('flex', mostrar); }
+            const status = document.getElementById('biometria-status');
+            const ativar = document.getElementById('btn-ativar-biometria');
+            const desativar = document.getElementById('btn-desativar-biometria');
+            if (!status) return;
+            if (!disponivel) {
+                status.innerHTML = '<i class="fa-solid fa-circle-info text-slate-400 mr-1"></i>Este aparelho ou navegador não oferece biometria (ou ela não está configurada no sistema). No celular, use o Chrome (Android) ou o Safari (iPhone) com digital ou rosto cadastrados.';
+                ativar.classList.add('hidden'); desativar.classList.add('hidden');
+            } else if (salva) {
+                const quando = salva.criadoEm ? new Date(salva.criadoEm).toLocaleDateString('pt-BR') : '';
+                status.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i>Biometria <strong>ativada</strong> neste aparelho${quando ? ` desde ${quando}` : ''}.`;
+                ativar.classList.add('hidden'); desativar.classList.remove('hidden');
+            } else {
+                status.innerHTML = '<i class="fa-regular fa-circle text-slate-400 mr-1"></i>Biometria <strong>desativada</strong> neste aparelho.';
+                ativar.classList.remove('hidden'); desativar.classList.add('hidden');
+            }
+        }
+
+        async function ativarBiometria() {
+            if (!(await biometriaDisponivel())) { alert('Este aparelho não oferece biometria para sites. Verifique se a digital ou o rosto estão cadastrados no aparelho.'); return false; }
+            try {
+                const credencial = await navigator.credentials.create({
+                    publicKey: {
+                        challenge: bytesAleatorios(32),
+                        rp: { name: 'FinançasApp' },
+                        user: { id: bytesAleatorios(16), name: 'financasapp', displayName: 'FinançasApp – Controle de Gastos' },
+                        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+                        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
+                        timeout: 60000,
+                        attestation: 'none'
+                    }
+                });
+                if (!credencial) throw new Error('nenhuma credencial criada');
+                localStorage.setItem(CHAVE_BIOMETRIA, JSON.stringify({ id: paraBase64Url(credencial.rawId), criadoEm: new Date().toISOString() }));
+                localStorage.removeItem(CHAVE_BIOMETRIA_RECUSADA);
+                await atualizarTelaBiometria();
+                alert('Biometria ativada neste aparelho. Na próxima vez, toque em "Entrar com biometria".');
+                return true;
+            } catch (erro) {
+                if (erro && erro.name === 'NotAllowedError') return false; // cancelado pelo usuário
+                console.error('Falha ao ativar a biometria:', erro);
+                alert(`Não foi possível ativar a biometria: ${erro && erro.message ? erro.message : erro}`);
+                return false;
+            }
+        }
+
+        function desativarBiometria() {
+            if (!confirm('Desativar a biometria neste aparelho? Você continuará entrando com a senha.')) return;
+            localStorage.removeItem(CHAVE_BIOMETRIA);
+            localStorage.setItem(CHAVE_BIOMETRIA_RECUSADA, '1');
+            atualizarTelaBiometria();
+        }
+
+        async function entrarComBiometria() {
+            const salva = lerBiometriaSalva();
+            if (!salva) { atualizarTelaBiometria(); return; }
+            if (!dadosCarregados) { alert('Ainda carregando seus dados do servidor. Aguarde alguns segundos e tente novamente (verifique a internet).'); return; }
+            try {
+                const resposta = await navigator.credentials.get({
+                    publicKey: {
+                        challenge: bytesAleatorios(32),
+                        allowCredentials: [{ type: 'public-key', id: deBase64Url(salva.id), transports: ['internal'] }],
+                        userVerification: 'required',
+                        timeout: 60000
+                    }
+                });
+                const flags = resposta && resposta.response && resposta.response.authenticatorData
+                    ? new Uint8Array(resposta.response.authenticatorData)[32] : 0;
+                if (!resposta || paraBase64Url(resposta.rawId) !== salva.id || !(flags & 0x04)) throw new Error('a biometria não foi confirmada');
+                liberarAcesso();
+            } catch (erro) {
+                if (erro && erro.name === 'NotAllowedError') return; // cancelou ou não reconheceu: pode tentar de novo ou usar a senha
+                console.error('Falha na entrada por biometria:', erro);
+                alert(`Não foi possível entrar com a biometria (${erro && erro.message ? erro.message : erro}). Use a senha.`);
+            }
+        }
+
+        // Depois de entrar com a senha, oferece ativar a biometria (uma vez por aparelho)
+        async function oferecerBiometriaAposLogin() {
+            try {
+                if (lerBiometriaSalva() || localStorage.getItem(CHAVE_BIOMETRIA_RECUSADA)) return;
+                if (!(await biometriaDisponivel())) return;
+                // Aviso com botão: o iPhone só permite ativar a partir de um toque do usuário
+                const aviso = document.getElementById('aviso-biometria');
+                setTimeout(() => { aviso.classList.remove('hidden'); aviso.classList.add('flex'); }, 700);
+            } catch (e) {}
+        }
+
+        function fecharAvisoBiometria(recusar) {
+            const aviso = document.getElementById('aviso-biometria');
+            aviso.classList.add('hidden'); aviso.classList.remove('flex');
+            if (recusar) localStorage.setItem(CHAVE_BIOMETRIA_RECUSADA, '1');
+        }
+        async function ativarBiometriaPeloAviso() {
+            fecharAvisoBiometria(false);
+            await ativarBiometria();
+        }
+
+        atualizarTelaBiometria();
 
         let db = {
             senha: '1234',
@@ -1790,6 +1952,7 @@
         }
 
         function switchTab(tabId) {
+            if (tabId === 'senha') setTimeout(atualizarTelaBiometria, 0);
             if (tabId === 'cadastros' && dadosCarregados) setTimeout(carregarListaCopias, 0);
             ['dashboard', 'transacoes', 'parcelados', 'projecoes', 'cadastros', 'senha'].forEach(t => {
                 const el = document.getElementById(`tab-${t}`);
